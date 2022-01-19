@@ -52,11 +52,14 @@
 
 | 文件            | 备注                      |
 | --------------- | ------------------------- |
+| _template.c/_template.h         | 库模板              |
+| fonts.h         | GUI使用的字体              |
 | iot.c/iot.h     | 物联网框架                |
 | mydsp.c/mydsp.h | 简单的信号处理            |
 | mygui.c/mygui.h | 简单的GUI框架             |
 | myiic.c/myiic.h | 使用任意IO进行模拟IIC通信 |
 | myspi.c/myspi.h | 使用任意IO进行模拟SPI通信 |
+| mytask.c/mytask.h | 类Arduino风格，减少对生成代码的修改 |
 
 ## 使用
 

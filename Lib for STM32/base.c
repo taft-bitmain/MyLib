@@ -1,149 +1,22 @@
 /*******************************************************************************
  * @file     base.c
- * @brief    Basic operations, such as uart, detecting key delection and lighting the LED.
- * @version  V1.2
- * @date     2021.7.4
+ * @brief    Basic operations for IO and UART.
+ * @version  V1.3
+ * @date     2021.8.6
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
 *******************************************************************************/
 
 #include "base.h"
 
-/************************* Key ****************************/
-#if (BASE_KEY == 1)
-char iSPin_10(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
-{
-	if(HAL_GPIO_ReadPin(GPIOx,GPIO_Pin)==GPIO_PIN_RESET)
-	{
-		HAL_Delay(10);
-		return 1;
-	}
-	return 0;
-	
-}
-char iSPin_01(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
-{
-	if(HAL_GPIO_ReadPin(GPIOx,GPIO_Pin)==GPIO_PIN_SET)
-	{
-		HAL_Delay(10);
-		return 1;
-	}
-	return 0;
-}
-char iSPin_101(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
-{
-	if(HAL_GPIO_ReadPin(GPIOx,GPIO_Pin)==GPIO_PIN_RESET)
-	{
-		HAL_Delay(10);
-		while(HAL_GPIO_ReadPin(GPIOx,GPIO_Pin)==GPIO_PIN_RESET);
-		HAL_Delay(10);
-		return 1;
-	}
-	return 0;
-}
-char iSPin_010(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
-{
-	if(HAL_GPIO_ReadPin(GPIOx,GPIO_Pin)==GPIO_PIN_SET)
-	{
-		HAL_Delay(10);
-		while(HAL_GPIO_ReadPin(GPIOx,GPIO_Pin)==GPIO_PIN_SET);
-		HAL_Delay(10);
-		return 1;
-	}
-	return 0;
-}
-#endif
-
-
-/********************* Key Timer Interrupt *********************/
-#if (BASE_KEY_TIMER == 1)
-
-void Key_SetPin(Key_TypeDef *key ,GPIO_TypeDef *Port,uint16_t Pin,uint16_t PullUpDown)
-{
-	key->Port = Port;
-	key->Pin = Pin;
-	key->PP = PullUpDown;
-	key->Count = 0;
-	key->CountTmp = 0;
-	key->PrevState = 0;
-	key->Press = 0;
-	key->Relase = 0;
-}
-
-uint16_t Key_IsPress(Key_TypeDef *key)
-{
-	if(key->Press)
-	{
-		key->Press--;
-		return 1;
-	}
-	return 0;
-}
-uint16_t Key_IsRelase(Key_TypeDef *key)
-{
-	if(key->Relase)
-	{
-		key->Relase--;
-		if(key->Count > KEY_LONG_COUNT)
-			return 2;
-		else
-			return 1;
-	}
-	return 0;
-}
-
-void Key_TimerHandle(Key_TypeDef *key)
-{
-	uint16_t PinState;
-	PinState = HAL_GPIO_ReadPin(key->Port,key->Pin);
-	//如果按键按下
-    if( PinState != key->PP)
-	{
-		//去除抖动
-		if(key->PrevState == 0)
-		{
-			key->CountTmp++;
-			if(key->CountTmp >= KEY_SHORT_COUNT)
-			{
-				key->PrevState = 1;
-				key->Press++;
-				key->Count = 0;
-				key->CountTmp = 0;
-			}	
-		}
-		else
-		{
-			key->Count++;
-		}	
-	}
-    //如果按键没有按下
-	else
-	{
-		if(key->PrevState == 1)
-		{
-			key->CountTmp++;
-			if(key->CountTmp >= KEY_SHORT_COUNT)
-			{
-				key->PrevState = 0;
-				key->Relase++;
-				key->CountTmp = 0;
-			}
-		}
-	}
-}
-
-#endif
-
 
 /********************** printf ****************************/
-#if (BASE_USART_PRINTF == 1)
+#if (BASE_UART_PRINTF == 1)
 
 #include <stdio.h>
 #include <stdarg.h>
 
-//#include "usbd_cdc_if.h"
-
-char _dat_printf[1024];
+char _dat_printf[UART_BUFFER_LEN];
 
 int Myprintf(const char * format, ...)
 {
@@ -153,10 +26,14 @@ int Myprintf(const char * format, ...)
     nBytes = vsprintf(_dat_printf, format, arg_ptr);
     va_end(arg_ptr);
 
-    //todo
-    //send it by your function
+
+    while ( !(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_TC)) );
     HAL_UART_Transmit(&huart1,(uint8_t *)_dat_printf, nBytes,1000);
+    
+    // Or send it by your other function
+//#include "usbd_cdc_if.h"
     //CDC_Transmit_FS((uint8_t *)_dat_printf, nBytes);
+    
     return nBytes;
 }
 
@@ -164,21 +41,22 @@ int Myprintf(const char * format, ...)
 
 
 /****************** usart dma transmit **************************/
-#if (BASE_USART_DMA_TRANSMIT == 1)
+#if (BASE_UART_DMA_TRANSMIT == 1)
+
 #include <stdio.h>
 #include <stdarg.h>
 
-#if (USART1_DMA_TRANSMIT == 1)
-uint8_t USART1_TxBuffer[USART_DMA_BUFFER_LEN];
+#if (UART1_DMA_TRANSMIT == 1)
+uint8_t UART1_TxBuffer[UART_BUFFER_LEN];
 #endif
-#if (USART2_DMA_TRANSMIT == 1)
-uint8_t USART2_TxBuffer[USART_DMA_BUFFER_LEN];
+#if (UART2_DMA_TRANSMIT == 1)
+uint8_t UART2_TxBuffer[UART_BUFFER_LEN];
 #endif
-#if (USART3_DMA_TRANSMIT == 1)
-uint8_t USART3_TxBuffer[USART_DMA_BUFFER_LEN];
+#if (UART3_DMA_TRANSMIT == 1)
+uint8_t UART3_TxBuffer[UART_BUFFER_LEN];
 #endif
-#if (USART4_DMA_TRANSMIT == 1)
-uint8_t USART4_TxBuffer[USART_DMA_BUFFER_LEN];
+#if (UART4_DMA_TRANSMIT == 1)
+uint8_t UART4_TxBuffer[UART_BUFFER_LEN];
 #endif
 
 
@@ -186,39 +64,41 @@ uint8_t USART4_TxBuffer[USART_DMA_BUFFER_LEN];
 void UART_DMA_Transmintf(UART_HandleTypeDef *huart,const char * format, ...)
 {
 	uint16_t nbytes;
+    uint8_t* pData;
 	
-	va_list arg_ptr;
-	va_start(arg_ptr, format);
-#if (USART1_DMA_TRANSMIT == 1)
+#if (UART1_DMA_TRANSMIT == 1)
 	if(huart->Instance == USART1)
-	{
-		nbytes = vsprintf((char*)USART1_TxBuffer, format, arg_ptr);
-		HAL_UART_Transmit_DMA(&huart1,USART1_TxBuffer,nbytes);
-	}
+        pData = UART1_TxBuffer;
 #endif
-#if (USART2_DMA_TRANSMIT == 1)
+#if (UART2_DMA_TRANSMIT == 1)
 	if(huart->Instance == USART2)
-	{
-		nbytes = vsprintf((char*)USART2_TxBuffer, format, arg_ptr);
-		HAL_UART_Transmit_DMA(&huart2,USART2_TxBuffer,nbytes);
-	}
+        pData = UART2_TxBuffer;
 #endif
-#if (USART3_DMA_TRANSMIT == 1)
+#if (UART3_DMA_TRANSMIT == 1)
 	if(huart->Instance == USART3)
-	{
-		nbytes = vsprintf((char*)USART3_TxBuffer, format, arg_ptr);
-		HAL_UART_Transmit_DMA(&huart3,USART3_TxBuffer,nbytes);
-	}
+        pData = UART3_TxBuffer;
 #endif
-#if (USART4_DMA_TRANSMIT == 1)
-	if(huart->Instance == UART4)
-	{
-		nbytes = vsprintf((char*)USART4_TxBuffer, format, arg_ptr);
-		HAL_UART_Transmit_DMA(&huart4,USART4_TxBuffer,nbytes);
-	}
+#if (UART4_DMA_TRANSMIT == 1)
+    if(huart->Instance == UART4)
+        pData = UART4_TxBuffer;
 #endif
-	
+    
+    if(pData == NULL)
+        return ;
+    
+    va_list arg_ptr;
+	va_start(arg_ptr, format);
+    nbytes = vsprintf((char*)pData, format, arg_ptr);
 	va_end(arg_ptr);
+    
+    UART_DMA_Transmint(huart,pData,nbytes);
+}
+
+void UART_DMA_Transmint(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size)
+{
+    // if the DMA is transmition complete, send it. Otherwise waitting for DMA completion.
+    while ( !(__HAL_UART_GET_FLAG(huart, UART_FLAG_TC)) );
+    HAL_UART_Transmit_DMA(huart,pData,Size);
 }
 
 #endif
@@ -227,123 +107,123 @@ void UART_DMA_Transmintf(UART_HandleTypeDef *huart,const char * format, ...)
 
 
 /****************** usart dma receive ***************************/
-#if (BASE_USART_DMA_RECEIVE == 1)
+#if (BASE_UART_DMA_RECEIVE == 1)
 
-#if (USART1_DMA_RECEIVE == 1)
-uint8_t USART1_RxBuffer[USART_DMA_BUFFER_LEN];
+#if (UART1_DMA_RECEIVE == 1)
+uint8_t UART1_RxBuffer[UART_BUFFER_LEN];
 #endif
-#if (USART2_DMA_RECEIVE == 1)
-uint8_t USART2_RxBuffer[USART_DMA_BUFFER_LEN];
+#if (UART2_DMA_RECEIVE == 1)
+uint8_t UART2_RxBuffer[UART_BUFFER_LEN];
 #endif
-#if (USART3_DMA_RECEIVE == 1)
-uint8_t USART3_RxBuffer[USART_DMA_BUFFER_LEN];
+#if (UART3_DMA_RECEIVE == 1)
+uint8_t UART3_RxBuffer[UART_BUFFER_LEN];
 #endif
-#if (USART4_DMA_RECEIVE == 1)
-uint8_t USART4_RxBuffer[USART_DMA_BUFFER_LEN];
+#if (UART4_DMA_RECEIVE == 1)
+uint8_t UART4_RxBuffer[UART_BUFFER_LEN];
 #endif
 
 
 void UART_IDLE_Init(void)
 {
-#if (USART1_DMA_RECEIVE == 1)
+#if (UART1_DMA_RECEIVE == 1)
 	__HAL_UART_ENABLE_IT(&huart1,UART_IT_IDLE);
-	HAL_UART_Receive_DMA(&huart1,USART1_RxBuffer,USART_DMA_BUFFER_LEN);
+	HAL_UART_Receive_DMA(&huart1,UART1_RxBuffer,UART_BUFFER_LEN);
 #endif
-#if (USART2_DMA_RECEIVE == 1)
+#if (UART2_DMA_RECEIVE == 1)
 	__HAL_UART_ENABLE_IT(&huart2,UART_IT_IDLE);
-	HAL_UART_Receive_DMA(&huart2,USART2_RxBuffer,USART_DMA_BUFFER_LEN);
+	HAL_UART_Receive_DMA(&huart2,UART2_RxBuffer,UART_BUFFER_LEN);
 #endif
-#if (USART3_DMA_RECEIVE == 1)
+#if (UART3_DMA_RECEIVE == 1)
 	__HAL_UART_ENABLE_IT(&huart3,UART_IT_IDLE);
-	HAL_UART_Receive_DMA(&huart3,USART3_RxBuffer,USART_DMA_BUFFER_LEN);
+	HAL_UART_Receive_DMA(&huart3,UART3_RxBuffer,UART_BUFFER_LEN);
 #endif
-#if (USART4_DMA_RECEIVE == 1)
+#if (UART4_DMA_RECEIVE == 1)
 	__HAL_UART_ENABLE_IT(&huart4,UART_IT_IDLE);
-	HAL_UART_Receive_DMA(&huart4,USART4_RxBuffer,USART_DMA_BUFFER_LEN);
+	HAL_UART_Receive_DMA(&huart4,UART4_RxBuffer,UART_BUFFER_LEN);
 #endif
 }
 
 void UART_IDLE_Handler(UART_HandleTypeDef *huart)
 {
-  uint32_t temp = READ_REG(huart->Instance->SR);
-  if(temp&UART_FLAG_IDLE)
+    uint32_t temp = READ_REG(huart->Instance->SR);
+    if(temp&UART_FLAG_IDLE)
 	{
 		__HAL_UART_CLEAR_IDLEFLAG(huart);
 		HAL_DMA_Abort(huart->hdmarx);
 		huart->RxXferCount = __HAL_DMA_GET_COUNTER(huart->hdmarx);
 		
-#if (USART1_DMA_RECEIVE == 1)
+#if (UART1_DMA_RECEIVE == 1)
 		if(huart->Instance == USART1)
-			USART1_IDLE_Callback(huart->pRxBuffPtr,USART_DMA_BUFFER_LEN - huart->RxXferCount);
+			UART1_IDLE_Callback(huart->pRxBuffPtr,UART_BUFFER_LEN - huart->RxXferCount);
 #endif
-#if (USART2_DMA_RECEIVE == 1)
+#if (UART2_DMA_RECEIVE == 1)
 		if(huart->Instance == USART2)
-			USART2_IDLE_Callback(huart->pRxBuffPtr,USART_DMA_BUFFER_LEN - huart->RxXferCount);
+			UART2_IDLE_Callback(huart->pRxBuffPtr,UART_BUFFER_LEN - huart->RxXferCount);
 #endif
-#if (USART3_DMA_RECEIVE == 1)
+#if (UART3_DMA_RECEIVE == 1)
 		if(huart->Instance == USART3)
-			USART3_IDLE_Callback(huart->pRxBuffPtr,USART_DMA_BUFFER_LEN - huart->RxXferCount);
+			UART3_IDLE_Callback(huart->pRxBuffPtr,UART_BUFFER_LEN - huart->RxXferCount);
 #endif
-#if (USART4_DMA_RECEIVE == 1)
+#if (UART4_DMA_RECEIVE == 1)
 		if(huart->Instance == UART4)
-			USART4_IDLE_Callback(huart->pRxBuffPtr,USART_DMA_BUFFER_LEN - huart->RxXferCount);
+			UART4_IDLE_Callback(huart->pRxBuffPtr,UART_BUFFER_LEN - huart->RxXferCount);
 #endif
 		
 		huart->RxState = HAL_UART_STATE_READY;
 		huart->hdmarx->State = HAL_DMA_STATE_READY;
-		HAL_UART_Receive_DMA(huart,huart->pRxBuffPtr,USART_DMA_BUFFER_LEN);
+		HAL_UART_Receive_DMA(huart,huart->pRxBuffPtr,UART_BUFFER_LEN);
 	}
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-#if (USART1_DMA_RECEIVE == 1)
+#if (UART1_DMA_RECEIVE == 1)
 	if(huart->Instance == USART1)
 	{
 		__HAL_UART_ENABLE_IT(&huart1,UART_IT_IDLE);
-		HAL_UART_Receive_DMA(&huart1,USART1_RxBuffer,USART_DMA_BUFFER_LEN);
+		HAL_UART_Receive_DMA(&huart1,UART1_RxBuffer,UART_BUFFER_LEN);
 	}
 #endif
-#if (USART2_DMA_RECEIVE == 1)
+#if (UART2_DMA_RECEIVE == 1)
 	if(huart->Instance == USART2)
 	{
 		__HAL_UART_ENABLE_IT(&huart2,UART_IT_IDLE);
-		HAL_UART_Receive_DMA(&huart2,USART2_RxBuffer,USART_DMA_BUFFER_LEN);
+		HAL_UART_Receive_DMA(&huart2,UART2_RxBuffer,UART_BUFFER_LEN);
 	}
 #endif
-#if (USART3_DMA_RECEIVE == 1)
+#if (UART3_DMA_RECEIVE == 1)
 	if(huart->Instance == USART3)
 	{
 		__HAL_UART_ENABLE_IT(&huart3,UART_IT_IDLE);
-		HAL_UART_Receive_DMA(&huart3,USART3_RxBuffer,USART_DMA_BUFFER_LEN);
+		HAL_UART_Receive_DMA(&huart3,UART3_RxBuffer,UART_BUFFER_LEN);
 	}
 #endif
-#if (USART4_DMA_RECEIVE == 1)
+#if (UART4_DMA_RECEIVE == 1)
 	if(huart->Instance == UART4)
 	{
 		__HAL_UART_ENABLE_IT(&huart4,UART_IT_IDLE);
-		HAL_UART_Receive_DMA(&huart4,USART4_RxBuffer,USART_DMA_BUFFER_LEN);
+		HAL_UART_Receive_DMA(&huart4,UART4_RxBuffer,UART_BUFFER_LEN);
 	}
 #endif
 
 }
 
-__weak void USART1_IDLE_Callback(uint8_t *data,uint16_t len)
+__weak void UART1_IDLE_Callback(uint8_t *data,uint16_t len)
 {
 	UNUSED(data);
 	UNUSED(len);
 }
-__weak void USART2_IDLE_Callback(uint8_t *data,uint16_t len)
+__weak void UART2_IDLE_Callback(uint8_t *data,uint16_t len)
 {
 	UNUSED(data);
 	UNUSED(len);
 }
-__weak void USART3_IDLE_Callback(uint8_t *data,uint16_t len)
+__weak void UART3_IDLE_Callback(uint8_t *data,uint16_t len)
 {
 	UNUSED(data);
 	UNUSED(len);
 }
-__weak void USART4_IDLE_Callback(uint8_t *data,uint16_t len)
+__weak void UART4_IDLE_Callback(uint8_t *data,uint16_t len)
 {
 	UNUSED(data);
 	UNUSED(len);

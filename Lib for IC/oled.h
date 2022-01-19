@@ -9,7 +9,7 @@
  *******************************************************************************/
  /*******************************************************************************
 TIPS:
-	1. remember to enable GPIO clock;
+    
 EXAMPLE CODE:
 	OLED_Init();
 
@@ -25,7 +25,7 @@ EXAMPLE CODE:
     0 for i2c, and 1 for 4-spi.
     Dont not use 3-spi, plz...
     It will send nine bits during a write cycle,
-    and it MSB stand for DATA (1) or CMD (0).
+    and its MSB stand for DATA (1) or CMD (0).
 */
 #define OLED_INTERFACE  1
 
@@ -39,26 +39,25 @@ EXAMPLE CODE:
 #define OLED_IIC_CMD	0x00
 #define OLED_IIC_DATA	0x40
 
-static MYIIC myiic1 = {
-	.GPIO_SCL = GPIOA,.Pin_SCL = GPIO_PIN_1,
-	.GPIO_SDA = GPIOA,.Pin_SDA = GPIO_PIN_3,
-	.DevAddr = OLED_IIC_ADDR,
-	.Speed = 1
+static MyIIC myiic1 = {
+	.SCL_Port = GPIOG,.SCL_Bit = GPIO_PIN_2,
+	.SDA_Port = GPIOG,.SDA_Bit = GPIO_PIN_4,
+	.Speed = 1 ,.DevAddr = OLED_IIC_ADDR
 };
 
 #else
 
 #include "myspi.h"
 
-#define OLED_WritePinDC(x)		HAL_GPIO_WritePin(GPIOA,GPIO_PIN_7,x?GPIO_PIN_SET:GPIO_PIN_RESET);
-#define OLED_WritePinRST(x)		HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5,x?GPIO_PIN_SET:GPIO_PIN_RESET);
+#define OLED_WritePinRST(x)		( x ? (GPIOE->BSRR = GPIO_PIN_8) : (GPIOE->BRR = GPIO_PIN_8) )
+#define OLED_WritePinDC(x)		( x ? (GPIOE->BSRR = GPIO_PIN_9) : (GPIOE->BRR = GPIO_PIN_9) )
 
-static MYSPI myspi1 = {
-    .GPIO_SCK  = GPIOA, .Pin_SCK  = GPIO_PIN_1,
-    .GPIO_MOSI = GPIOA, .Pin_MOSI = GPIO_PIN_3,
-    .GPIO_MISO = NULL , .Pin_MISO = 0,
-    .GPIO_CS   = GPIOC, .Pin_CS   = GPIO_PIN_5,
-    .Speed = 1, .CPOL = 0, .CPHA = 0
+static MySPI myspi1 = {
+    .SCK_Port  = GPIOE, .SCK_Bit  = GPIO_PIN_11,
+    .CS_Port   = GPIOE, .CS_Bit   = GPIO_PIN_10,
+    .MOSI_Port = GPIOE, .MOSI_Bit = GPIO_PIN_12,
+    .MISO_Port = NULL,  .MISO_Bit = 0,
+    .Speed = 2, .CPOL = 0, .CPHA = 0
 };
 
 #endif

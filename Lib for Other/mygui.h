@@ -2,7 +2,7 @@
  * @file     mygui.h
  * @brief    load fonts or draw shapes to screen 
  * @version  V1.4
- * @date     2021.7.29
+ * @date     2021.8.2
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
  ******************************************************************************/
@@ -92,7 +92,7 @@ void MYGUI_Load		    	(int16_t x,int16_t y,uint16_t xlen,uint16_t ylen,const uin
 #include "fonts.h"
 
 void MYGUI_Print		    (int16_t x,int16_t y,const char *data,uint16_t datalen,FONT_SIZE size,uint8_t color);
-void MYGUI_PrintNum	   	    (int16_t x,int16_t y,int32_t num,FONT_SIZE size,uint8_t color);
+void MYGUI_Printf           (int16_t x,int16_t y,FONT_SIZE size,uint8_t color,const char * format, ...);
 
 #endif
 

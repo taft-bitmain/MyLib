@@ -15,10 +15,11 @@
 void OLED_SendInit(void)
 {
 #if ( OLED_INTERFACE == 0 )
-	MYIIC_Init(&myiic1);
+	;
 #else
 	OLED_WritePinRST(0);
-	MYSPI_Init(&myspi1);
+    MySPI_IO_Init(&myspi1);
+	HAL_Delay(1);
 	OLED_WritePinRST(1);
 #endif
 }
@@ -27,19 +28,19 @@ void OLED_SendCmd(uint8_t *data,unsigned int len)
 {
     
 #if ( OLED_INTERFACE == 0 )
-	MYIIC_WriteMem(&myiic1,OLED_IIC_CMD,data,len);
+	MyIIC_WriteMem(&myiic1,OLED_IIC_CMD,data,len);
 #else
 	OLED_WritePinDC(0);
-	MYSPI_Write(&myspi1,data,len);
+	MySPI_Write(&myspi1,data,len);
 #endif
 }
 void OLED_SendData(uint8_t *data,unsigned int len)
 {
 #if ( OLED_INTERFACE == 0 )
-	MYIIC_WriteMem(&myiic1,OLED_IIC_DATA,data,len);
+	MyIIC_WriteMem(&myiic1,OLED_IIC_DATA,data,len);
 #else
 	OLED_WritePinDC(1);
-	MYSPI_Write(&myspi1,data,len);
+	MySPI_Write(&myspi1,data,len);
 #endif
 }
 

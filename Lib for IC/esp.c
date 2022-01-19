@@ -1,31 +1,27 @@
 /*******************************************************************************
  * @file     esp.c
- * @brief    
- * @version  V1.1
- * @date     2021.6.2
+ * @brief    Connect esp8266 module with AT commands through UART.
+ * @version  V1.2
+ * @date     2021.12.2
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
  *******************************************************************************/
 #include "esp.h"
-#include "stdio.h"
+#include <stdio.h>
+#include <stdarg.h>
 #include "base.h"
-#include "usbd_cdc_if.h"
 
 ESP esp8266;
 
 //todo
-void USART2_IDLE_Callback(uint8_t *data, uint16_t len)
-{
-	//CDC_Transmit_FS((uint8_t*) data, len);
-  LEDTOGGLE(LED);
+void UART2_IDLE_Callback(uint8_t *data, uint16_t len)
+{    
 	ESP_LowLevelRec(&esp8266, (char*) data, len);
 }
 
 void ESP_LowLevelSend( char *data, int len)
 {
-	//todo
-	HAL_UART_Transmit(&huart2, (uint8_t*) data, len, 1000);
-	//CDC_Transmit_FS((uint8_t*) data, len);
+	HAL_UART_Transmit(&huart2, (uint8_t *)data, len, 1000);
 }
 
 void ESP_LowLevelRec( ESP *esp , const char *data_in, int len)
@@ -34,15 +30,15 @@ void ESP_LowLevelRec( ESP *esp , const char *data_in, int len)
 	{
 		if(esp->Link0 == NULL)
 		{
-			ESP_PrintLog("Log:ESP8266:Link data is received, but no buff to store\r\n");
+			ESP_DebugLog("Log:ESP8266:Link data is received, but no buff to store\r\n");
 			return ;
 		}
 		else
 		{
-			ESP_DATA *tmp = &(esp->Link0->RecData);
-			if (len > (ESP_RXLEN - tmp->Count))
-				ESP_PrintLog(
-						"Log:ESP8266:Link data is received, but buff is not enough\r\n");
+			ESP_Data *tmp = &(esp->Link0->RecData);
+			if (len > (ESP_RXBUFF_LEN - tmp->Count))
+				ESP_DebugLog(
+						"Log:ESP8266 Link data is received, but buff is not enough\r\n");
 			else
 			{
 				memcpy(tmp->Head, data_in, len);
@@ -56,10 +52,10 @@ void ESP_LowLevelRec( ESP *esp , const char *data_in, int len)
 	{
 		//todo
 		//check the link id, and copy data to every link.
-		ESP_DATA *tmp = &(esp->RecCmd);
-		if (len > (ESP_RXLEN - tmp->Count))
-			ESP_PrintLog(
-					"Log:ESP8266:cmd data is received, but buff is not enough\r\n");
+		ESP_Data *tmp = &(esp->RecCmd);
+		if (len > (ESP_RXBUFF_LEN - tmp->Count))
+			ESP_DebugLog(
+					"Log:ESP8266 cmd data is received, but buff is not enough\r\n");
 		else
 		{
 			memcpy(tmp->Head, data_in, len);
@@ -71,123 +67,136 @@ void ESP_LowLevelRec( ESP *esp , const char *data_in, int len)
 	return ;
 }
 
-void ESP_PrintLog(const char *data)
-{
-	//todo
-	//HAL_UART_Transmit(&huart1,(char *)data,strlen(data),1000);
-	CDC_Transmit_FS((uint8_t*) data, strlen(data));
-	/* Or like this.*/
-	//UNUSED(data);
-}
 
-
-void ESP_ClearData(ESP_DATA *dat)
+void ESP_ClearData(ESP_Data *dat)
 {
 	dat->Count = 0;
 	dat->Head = dat->Tail = dat->Data;
-	//memset(dat->Data, 0, ESP_RXLEN);
 }
 
-char ESP_Cmd( ESP *esp , char *cmd, char *reply, unsigned int waittime)
+#define ESP_CMD_NONE        0x00
+#define ESP_CMD_TIMEOUT     0x01
+#define ESP_CMD_BUSY        0x02
+#define ESP_CMD_OK          0x04
+#define ESP_CMD_ERROR       0x08
+
+static char _CmdBuff[128];
+
+char ESP_Cmd( ESP *esp , unsigned int waittime, char *cmd,...)
 {
-	ESP_DATA *tmp = &(esp->RecCmd);
+	ESP_Data *tmp = &(esp->RecCmd);
 	ESP_ClearData(tmp);
+    
+    int nBytes ;
+    
+    va_list arg_ptr;
+    va_start(arg_ptr, cmd);
+    nBytes = vsprintf(_CmdBuff, cmd, arg_ptr);
+    va_end(arg_ptr);
+    
+	ESP_LowLevelSend(_CmdBuff, nBytes);
 
-	//发送命令
-	ESP_LowLevelSend(cmd, strlen(cmd));
+	if (waittime == 0)
+		return ESP_CMD_NONE;
 
-	//不期待回复
-	if (reply == NULL || waittime == 0)
-		return 1;
-
-	//期待回复
 	uint32_t tickstart = HAL_GetTick();
 	while ((HAL_GetTick() - tickstart) < waittime)
 	{
 		if (tmp->Count)
 		{
-			//得到回复
-			if (strstr(tmp->Tail, reply) != NULL)
+            if (strstr(tmp->Tail, "OK") != NULL)
 			{
-				return 1;
+				return ESP_CMD_OK;
 			}
-			else
-			{
-				ESP_ClearData(tmp);
-			}
+            else if(strstr(tmp->Tail, "ERROR") != NULL)
+            {
+                return ESP_CMD_ERROR;
+            }
+            else if(strstr(tmp->Tail, "busy p...") != NULL)
+            {
+                return ESP_CMD_BUSY;
+            }
 		}
 	}
-	//超时
-	ESP_PrintLog(esp->RecCmd.Data);
-	return 0;
+	return ESP_CMD_TIMEOUT;
 }
 
 char ESP_Reset( ESP *esp )
 {
-#if (ESP_USE_RSTPIN == 1)
+#if (ESP_USE_PINRST == 1)
 {
-	HAL_GPIO_WritePin(GPIO_Port_ESPRst,GPIO_Pin_ESPRst,GPIO_PIN_RESET);
-	HAL_Delay(100);
-	HAL_GPIO_WritePin(GPIO_Port_ESPRst,GPIO_Pin_ESPRst,GPIO_PIN_SET);
-  HAL_Delay(3000);
-  return 1;
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_RESET);
+	HAL_Delay(200);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_SET);
+    HAL_Delay(3000);
+    return 1;
 }
 #else
-  ESP_TransparentEnd(esp);
-  HAL_Delay(1100);
+    ESP_TransparentEnd(esp);
+    HAL_Delay(1100);
 	return ESP_Cmd(esp,"AT+RST\r\n", "ready", 3000);
 #endif
 }
 
 char ESP_AtTest( ESP *esp )
 {
-	if( ESP_Cmd(esp,"AT\r\n","OK",500) )
+    ESP_DebugLog("Log:ESP8266 AT test...\r\n");
+    
+	if( ESP_Cmd(esp,2000,"AT\r\n") == ESP_CMD_OK )
 	{
 		return 1;
 	}
 	else
 	{
-		ESP_PrintLog("Log:ESP8266:AT test fail\r\n");
+		ESP_DebugLog("Log:ESP8266 AT test fail\r\n");
 		return 0;
 	}
 }
 
 char ESP_SetMode( ESP *esp )
 {
-	char cmd[80];
-	sprintf(cmd, "AT+CWMODE=%d\r\n",(int)esp->Mode);
-	if( ESP_Cmd(esp, cmd, "OK", 1000) )
+	if( ESP_Cmd(esp,1000,"AT+CWMODE=%d\r\n",(int)(esp->Mode) ) == ESP_CMD_OK )
 	{
 		return 1;
 	}
 	else
 	{
-		ESP_PrintLog("Log:ESP8266:Set mode fail\r\n");
+		ESP_DebugLog("Log:ESP8266 Set mode fail\r\n");
 		return 0;
 	}
 }
 
 char ESP_JoinAP( ESP *esp )
 {
+    ESP_DebugLog("Log:ESP8266 join AP...\r\n"); 
+    ESP_DebugLog("\tSSID: %s\r\n",esp->SSID);
+    ESP_DebugLog("\tPSWD: %s\r\n",esp->PSWD);
+    
 	if(esp->Mode == STA || esp->Mode == AP_STA)
 	{
-		//todo
-		// check the AP which has been connected before, to save time.
-		char cmd[80];
-		sprintf(cmd, "AT+CWJAP=\"%s\",\"%s\"\r\n",esp->SSID,esp->PSWD);
-		if( ESP_Cmd(esp, cmd, "OK", 10000) )
-		{
-			return 1;
-		}
-		else
-		{
-			ESP_PrintLog("Log:ESP8266:Join AP fail\r\n");
-			return 0;
-		}
+        if( (ESP_Cmd(esp, 1000, "AT+CWJAP?\r\n") == ESP_CMD_OK) && ( strstr(esp->RecCmd.Tail, esp->SSID ) != NULL) )
+        {
+            ESP_DebugLog("Log:ESP8266 has been joined AP\r\n");
+            esp->Connected = Enable;
+            return 1;
+        }
+        
+        if( ESP_Cmd(esp,10000, "AT+CWJAP=\"%s\",\"%s\"\r\n",esp->SSID,esp->PSWD ) == ESP_CMD_OK )
+        {
+            ESP_DebugLog("Log:ESP8266 Join AP success\r\n");
+            esp->Connected = Enable;
+            return 1;
+        }
+        else
+        {
+            esp->Connected = Disable;
+            ESP_DebugLog("Log:ESP8266 Join AP error\r\n");
+            return 0;
+        }
 	}
 	else
 	{
-		//ESP_PrintLog("Log:ESP8266:Join AP fail, it works in AP mode\r\n");
+		ESP_DebugLog("Log:ESP8266 Join AP fail, it works in AP mode\r\n");
 		return 1;
 	}
 }
@@ -196,47 +205,76 @@ char ESP_SetAP( ESP *esp )
 {
 	if(esp->Mode == AP || esp->Mode == AP_STA)
 	{
-		char cmd[128];
-		sprintf(cmd, "AT+CWSAP=\"%s\",\"%s\",1,%d\r\n",esp->SSID_AP,esp->PSWD_AP,(int)esp->APMode);
-		if( ESP_Cmd(esp, cmd, "OK", 1000) )
+		if( ESP_Cmd(esp, 1000,"AT+CWSAP=\"%s\",\"%s\",1,%d\r\n",esp->SSID_AP,esp->PSWD_AP,(int)esp->APMode )==ESP_CMD_OK )
 		{
 			return 1;
 		}
 		else
 		{
-			ESP_PrintLog("Log:ESP8266:Set AP fail\r\n");
+			ESP_DebugLog("Log:ESP8266 Set AP fail\r\n");
 			return 0;
 		}
 	}
 	else
 	{
-		//ESP_PrintLog("Log:ESP8266:Set AP fail, it works in STA mode\r\n");
+		ESP_DebugLog("Log:ESP8266 Set AP fail, it works in STA mode\r\n");
 		return 1;
 	}
 }
 
 char ESP_AutoCon( ESP *esp )
 {
-	if(esp->AUTOCONN == Enable)
-		return ESP_Cmd(esp, "AT+CWAUTOCONN=1\r\n", "OK", 1000);
+	if(esp->AutoConnect == Enable)
+    {
+        if( ESP_Cmd(esp, 1000, "AT+CWAUTOCONN=1\r\n")==ESP_CMD_OK )
+            return 1;
+        else
+            return 0;
+    }
+            
 	else
-		return ESP_Cmd(esp, "AT+CWAUTOCONN=0\r\n", "OK", 1000);
+    {
+		if( ESP_Cmd(esp, 1000, "AT+CWAUTOCONN=0\r\n")==ESP_CMD_OK )
+            return 1;
+        else
+            return 0;
+    }
 }
 
 char ESP_CIPMode( ESP *esp )
 {
 	if(esp->CIPMode == Enable)
-		return ESP_Cmd(esp, "AT+CIPMODE=1\r\n", "OK", 1000);
+    {
+        if( ESP_Cmd(esp, 1000, "AT+CIPMODE=1\r\n")==ESP_CMD_OK )
+            return 1;
+        else
+            return 0;
+    }
 	else
-		return ESP_Cmd(esp, "AT+CIPMODE=0\r\n", "OK", 1000);
+    {
+        if( ESP_Cmd(esp, 1000, "AT+CIPMODE=0\r\n")==ESP_CMD_OK )
+            return 1;
+        else
+            return 0;
+    }
 }
 
 char ESP_CIPMux( ESP *esp )
 {
 	if(esp->CIPMux == Enable)
-		return ESP_Cmd(esp, "AT+CIPMUX=1\r\n", "OK", 1000);
+    {
+        if( ESP_Cmd(esp, 1000, "AT+CIPMUX=1\r\n")==ESP_CMD_OK )
+            return 1;
+        else
+            return 0;
+    }
 	else
-		return ESP_Cmd(esp, "AT+CIPMUX=0\r\n", "OK", 1000);
+	{
+        if( ESP_Cmd(esp, 1000, "AT+CIPMUX=0\r\n")==ESP_CMD_OK )
+            return 1;
+        else
+            return 0;
+    }
 }
 
 char ESP_MultiTransport( ESP *esp )
@@ -247,49 +285,65 @@ char ESP_MultiTransport( ESP *esp )
 
 char ESP_Transparent( ESP *esp )
 {
-  if(esp->Transparent == Disable)
-  {
-    if( ESP_Cmd(esp,"AT+CIPSEND\r\n", ">", 1000) )
+    if(esp->Transparent == Disable)
     {
-      esp->Transparent = Enable;
-      return 1;
+        if( ESP_Cmd(esp,1000,"AT+CIPSEND\r\n") == ESP_CMD_OK )
+        {
+            esp->Transparent = Enable;
+            return 1;
+        }
+        return 0;
     }
-    return 0;
-  }
-	return 1;
+    return 1;
 }
 
 void ESP_TransparentEnd( ESP *esp )
 {
-	ESP_Cmd(esp,"+++", NULL, 0);
 	esp->Transparent = Disable;
+    ESP_Cmd(esp,300,"+++");
 }
 
 char ESP_Set( ESP *esp )
 {
-	if( !ESP_Reset(esp) )
-    return 0;
-	if( !ESP_AtTest(esp) )
-    return 0;
+    
+//	if( !ESP_Reset(esp) )
+//        return 0;
+    if( !ESP_AtTest(esp) )
+        return 0;
 	if( !ESP_SetMode(esp) )
-    return 0;
-	if( !ESP_SetAP(esp) )
-    return 0;
+        return 0;
+//	if( !ESP_SetAP(esp) )
+//        return 0;
 	if( !ESP_JoinAP(esp) )
-    return 0;
+        return 0;
 	if( !ESP_AutoCon(esp) )
-    return 0;
+        return 0;
 	if( !ESP_CIPMode(esp) )
-    return 0;
+        return 0;
 	if( !ESP_CIPMux(esp) )
-    return 0;
+        return 0;
 	return 1;
 }
 
-char ESP_Link( ESP *esp , ESP_LINK *link )
+char ESP_Link_Set( ESP *esp , ESP_Link *link )
 {
 	char cmd[128];
 	char *cmdp = cmd;
+    char ret;
+    
+    if(esp == NULL || link == NULL)
+    {
+        ESP_DebugLog("Log:ESP8266 wrong parameter for connecting\r\n");
+        return 0;
+    }
+    if( !esp->Connected )
+    {
+        ESP_DebugLog("Log:ESP8266 can't set link as it is not connect to AP\r\n");
+        return 0;
+    }
+    ESP_DebugLog("Log:ESP8266 link to %s:%d\r\n",link->IP,link->Port);
+    
+    ESP_ClearData( &(link->RecData) );
 
 	if(esp->CIPMux == Enable)
 	{
@@ -322,28 +376,53 @@ keep_alive:
 	}
 	sprintf(cmdp,"\r\n");
 send:
-	if (ESP_Cmd(esp, cmd, "OK", 2000))
+    ret = ESP_Cmd(esp,2000,"%s",cmd);
+	if(  ret == ESP_CMD_OK || 
+        (ret == ESP_CMD_ERROR && strstr(esp->RecCmd.Tail, "ALREADY CONNECTED") != NULL) )
 	{
+        link->Linked = Enable;
 		switch(link->LinkID)
 		{
-			case Multiple_ID_0:esp->Link0 = link;break;
-			case Multiple_ID_1:esp->Link1 = link;break;
-			case Multiple_ID_2:esp->Link2 = link;break;
-			case Multiple_ID_3:esp->Link3 = link;break;
-			case Multiple_ID_4:esp->Link4 = link;break;
-			case Single_ID:esp->Link0 = link;break;
+			case Multiple_ID_0  :esp->Link0 = link;break;
+			case Multiple_ID_1  :esp->Link1 = link;break;
+			case Multiple_ID_2  :esp->Link2 = link;break;
+			case Multiple_ID_3  :esp->Link3 = link;break;
+			case Multiple_ID_4  :esp->Link4 = link;break;
+			case Single_ID      :esp->Link0 = link;break;
 		}
+        ESP_DebugLog("Log:ESP8266 link success\r\n");
 		return 1;
 	}
 	else
 	{
-		ESP_PrintLog("Log:ESP8266:link fail\r\n");
+		ESP_DebugLog("Log:ESP8266 link fail\r\n");
 		return 0;
 	}
+    
+}
+char ESP_Link_Close ( ESP *esp , ESP_Link *link )
+{
+    if(link->Linked == Enable)
+    {
+        if( ESP_Cmd(esp,1000,"AT+CIPSLOSE\r\n") == ESP_CMD_OK )
+        {
+            link->Linked = Disable;
+            ESP_DebugLog("Log:ESP8266 Link closed\r\n");
+            return 1;
+        }
+        ESP_DebugLog("Log:ESP8266 Link failed\r\n");
+        return 0;
+    }
+    return 1;
 }
 
-char ESP_Send( ESP *esp , ESP_LINK *link , char *dat , int len)
+char ESP_Link_Send( ESP *esp , ESP_Link *link , char *dat , int len)
 {
+    if( link == NULL || link->Linked == Disable)
+    {
+        ESP_DebugLog("Log:ESP8266 can't send as link is not set\r\n");
+        return 0;
+    }
 	switch(link->LinkID)
 	{
 		case Multiple_ID_0:
@@ -358,16 +437,16 @@ char ESP_Send( ESP *esp , ESP_LINK *link , char *dat , int len)
 	}
 multiple_link:
 	if( ESP_MultiTransport(esp) )
-  {
-    ESP_LowLevelSend(dat,len);
-    return 1;
-  }
+    {
+        ESP_LowLevelSend(dat,len);
+        return 1;
+    }
 	return 0;
 single_link:
 	if( ESP_Transparent(esp) )
-  {
-    ESP_LowLevelSend(dat,len);
-    return 1;
-  }
+    {
+        ESP_LowLevelSend(dat,len);
+        return 1;
+    }    
 	return 0;
 }

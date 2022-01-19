@@ -1,28 +1,24 @@
 /*******************************************************************************
  * @file     myspi.h
  * @brief    simulation spi interface
- * @version  V1.0
- * @date     2021.3.21
+ * @version  V1.1
+ * @date     2021.8.6
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
 *******************************************************************************/
 /*******************************************************************************
 TIPS:
-	1.使用STM32 HAL库时，需要自行使能相应的GPIO端口时钟，GPIO不用再另行配置
-	2.Speed参数说明
-		在16MHz的条件下:
-			Speed=1，SCL约为 100Khz;
-			Speed=2，SCL约为 78Khz;
-			Speed=10，SCL约为 27Khz
-		该参数指示了I2C延时的时间，值越大，速度越慢。
+
 EXAMPLE CODE:
-	MYSPI myspi1 = {    .GPIO_SCK  = GPIOB, .Pin_SCK  = GPIO_PIN_5,
-                        .GPIO_MOSI = GPIOB, .Pin_MOSI = GPIO_PIN_6,
-                        .GPIO_MISO = GPIOB, .Pin_MISO = GPIO_PIN_7,
-                        .GPIO_CS   = GPIOB, .Pin_CS   = GPIO_PIN_8,
-                        .Speed = 5, .CPOL = 0, .CPHA = 0};
-	MYSPI_Init(&myspi1);
-	MYSPI_WriteReg(0x55,0xAA);
+	MySPI hspi = {
+    .SCK_Port  = GPIOE, .SCK_Bit  = GPIO_PIN_11,
+    .CS_Port   = GPIOE, .CS_Bit   = GPIO_PIN_10,
+    .MOSI_Port = GPIOE, .MOSI_Bit = GPIO_PIN_12,
+    .MISO_Port = NULL,  .MISO_Bit = 0,
+    .Speed = 2, .CPOL = 0, .CPHA = 0
+};
+    MySPI_IO_Init(&hspi);
+    MySPI_WriteReg(&hspi,0x12,0x34);
 	
 *******************************************************************************/
 #ifndef __MYSPI_H
@@ -31,50 +27,36 @@ EXAMPLE CODE:
 extern "c" {
 #endif
 
-//基于STM32HAL库的模拟spi协议
-#define MYSPI_USE_STM32HAL
-
-#ifdef MYSPI_USE_STM32HAL
-#include "stm32f1xx_hal.h"
-#include "stdint.h"
-#endif
+#include "stm32f1xx.h"
 
 typedef struct{
-//IO定义
-#ifdef MYSPI_USE_STM32HAL
-	GPIO_TypeDef	*GPIO_SCK;
-	uint16_t		Pin_SCK;
-	GPIO_TypeDef	*GPIO_MOSI;
-	uint16_t		Pin_MOSI;
-	GPIO_TypeDef	*GPIO_MISO;
-	uint16_t		Pin_MISO;
-	GPIO_TypeDef	*GPIO_CS;
-	uint16_t		Pin_CS;
-#endif
-//速度，时钟极性和相位定义
+	GPIO_TypeDef*   SCK_Port;
+	uint32_t		SCK_Bit;
+	GPIO_TypeDef*	CS_Port;
+	uint32_t		CS_Bit;
+	GPIO_TypeDef*	MOSI_Port;
+	uint32_t		MOSI_Bit;
+	GPIO_TypeDef*	MISO_Port;
+	uint32_t		MISO_Bit;
 	uint16_t	    Speed;
 	uint8_t			CPOL;
 	uint8_t			CPHA;
-}MYSPI;
+}MySPI;
 
-//以下函数需要根据不同平台适配
-void    MYSPI_WritePinSCK   (MYSPI *hspi,uint8_t state);
-void    MYSPI_WritePinMOSI  (MYSPI *hspi,uint8_t state);
-void    MYSPI_WritePinCS    (MYSPI *hspi,uint8_t state);
-uint8_t MYSPI_ReadPinMISO   (MYSPI *hspi);
 
-void    MYSPI_Delay         (uint16_t x);
-void    MYSPI_Init			(MYSPI *hspi);
+void        MySPI_IO_Init               (MySPI *hspi);
+void        MySPI_TransmitByte          (MySPI *hspi,uint8_t dat);
+uint8_t     MySPI_ReceiveByte           (MySPI *hspi);
+uint8_t     MySPI_TransmitReceiveByte   (MySPI *hspi,uint8_t dat);
 
-//以下函数与平台无关，无需修改
 
-void    MYSPI_WriteReg		(MYSPI *hspi,uint8_t RegAddr,uint8_t data);
-uint8_t MYSPI_ReadReg       (MYSPI *hspi,uint8_t RegAddr);
-void    MYSPI_WriteMem		(MYSPI *hspi,uint8_t RegAddr,uint8_t *data,uint16_t len);
-void    MYSPI_ReadMem		(MYSPI *hspi,uint8_t RegAddr,uint8_t *data,uint16_t len);
-void    MYSPI_Write		    (MYSPI *hspi,uint8_t *data,uint16_t len);
-void    MYSPI_Read			(MYSPI *hspi,uint8_t *data,uint16_t len);
-void    MYSPI_ReadWrite     (MYSPI *hspi,uint8_t *data_out,uint8_t *data_in,uint16_t len);
+void        MySPI_WriteReg		        (MySPI *hspi,uint8_t RegAddr,uint8_t dat);
+uint8_t     MySPI_ReadReg               (MySPI *hspi,uint8_t RegAddr);
+void        MySPI_WriteMem		        (MySPI *hspi,uint8_t RegAddr,uint8_t *dat,uint16_t len);
+void        MySPI_ReadMem		        (MySPI *hspi,uint8_t RegAddr,uint8_t *dat,uint16_t len);
+void        MySPI_Write		            (MySPI *hspi,uint8_t *dat,uint16_t len);
+void        MySPI_Read			        (MySPI *hspi,uint8_t *dat,uint16_t len);
+void        MySPI_ReadWrite             (MySPI *hspi,uint8_t *dat_in,uint8_t *dat_out,uint16_t len);
 
 
 #ifdef __cplusplus

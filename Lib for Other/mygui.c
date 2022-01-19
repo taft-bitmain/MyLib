@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @file     mygui.c
  * @brief    load fonts or draw shapes to screen 
- * @version  V1.3
- * @date     2021.2.8
+ * @version  V1.4
+ * @date     2021.8.2
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
  ******************************************************************************/
@@ -227,84 +227,67 @@ void MYGUI_Load(int16_t x,int16_t y,uint16_t xlen,uint16_t ylen,const uint8_t *d
 
 void MYGUI_Print(int16_t x,int16_t y,const char *data,uint16_t datalen,FONT_SIZE size,uint8_t color)
 {
-	int16_t tmp;
-	if(size==FONT_0806)
-	{
-		while(datalen--)
-		{
-			tmp = *data;
-			if(' '<=tmp && tmp <= '~')
-			{
-				tmp -= ' ';
-				MYGUI_Load(x,y,6,8,(uint8_t *)ASCII_0806[tmp],color);
-				x+=6;
-			}
-			data++;
-		}
-	}
-	else if(size==FONT_1206)
-	{
-		while(datalen--)
-		{
-			tmp = *data;
-			if(' '<=tmp && tmp <= '~')
-			{
-				tmp -= ' ';
-				MYGUI_Load(x,y,6,12,(uint8_t *)ASCII_1206[tmp],color);
-				x+=6;
-			}
-			data++;
-		}
-	}
-	else if(size==FONT_1608)
-	{
-		while(datalen--)
-		{
-			tmp = *data;
-			if(' '<=tmp && tmp <= '~')
-			{
-				tmp -= ' ';
-				MYGUI_Load(x,y,8,16,(uint8_t *)ASCII_1608[tmp],color);
-				x+=8;
-			}
-			data++;
-			
-		}
-	}
-	else if(size==FONT_2412)
-	{
-		while(datalen--)
-		{
-			tmp = *data;
-			if(' '<=tmp && tmp <= '~')
-			{
-				tmp -= ' ';
-				MYGUI_Load(x,y,12,24,(uint8_t *)ASCII_2412[tmp],color);
-				x+=12;
-			}
-			data++;
-			
-		}
-	}
+    uint8_t tmp,width,height,bytes;
+    const uint8_t* pFonts;
+    switch(size)
+    {
+        case FONT_0806:
+            pFonts = (uint8_t*)ASCII_0806;
+            width = 6;
+            height = 8;
+            bytes = 6;
+            break;
+        case FONT_1206:
+            pFonts = (uint8_t*)ASCII_1206;
+            width = 6;
+            height = 12;
+            bytes = 12;
+            break;
+        case FONT_1608:
+            pFonts = (uint8_t*)ASCII_1608;
+            width = 8;
+            height = 16;
+            bytes = 16;
+            break;
+        case FONT_2412:
+            pFonts = (uint8_t*)ASCII_2412;
+            width = 12;
+            height = 24;
+            bytes = 36;
+            break;
+        default: return;
+    }
+
+    while(datalen--)
+    {
+        tmp = *data;
+        if(' '<=tmp && tmp <= '~')
+        {
+            tmp -= ' ';
+            MYGUI_Load(x,y,width,height,(uint8_t *)(pFonts + tmp * bytes),color);
+            x += width;
+            if(x > MYGUI_X_MAX || y > MYGUI_Y_MAX)
+                return;
+        }
+        data++;
+    }
 }
 
-void MYGUI_PrintNum(int16_t x,int16_t y,int32_t num,FONT_SIZE size,uint8_t color)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+void MYGUI_Printf(int16_t x,int16_t y,FONT_SIZE size,uint8_t color,const char * format, ...)
 {
-	uint8_t data[11] = {0};
-	uint8_t i = 0;;
-	if(num < 0)
-	{
-		data[i++] = '-';
-		num = -num;
-	}
-	for(i=10;i>0;i--)
-    {
-    	data[i] = num%10 + '0';
-		num /=10;
-		if(num == 0)
-			break;
-    }
-	MYGUI_Print(x,y,(char*)data,11,size,color);
+    char *pbuff = (char *)malloc(128);
+    
+	va_list arg_ptr;
+    va_start(arg_ptr, format);
+    vsprintf(pbuff, format, arg_ptr);
+    va_end(arg_ptr);
+    
+	MYGUI_Print(x,y,(char*)pbuff,11,size,color);
+    free(pbuff);
 }
 
 #endif

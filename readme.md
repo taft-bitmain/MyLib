@@ -16,27 +16,28 @@
 
 ### 芯片相关(Lib for IC)
 
-| 芯片     | 文件          | 备注                                                | 接口          |
-| :------- | :------------ | :-------------------------------------------------- | ------------- |
+| 芯片     | 文件             | 备注                                               | 接口          |
+| :------- | :------------   | :------------------------------------------------- | ------------- |
 | ad9834   | \~.c/\~.h       | ADI的DDS芯片，75Mhz                                 | *             |
-| ad9910   | \~.c/\~.h       | ADI的DDS芯片，14bit，1GSPS采样率                    | *             |
-| ad9959   | \~.c/\~.h       | ADI的DDS芯片，四通道，500MSPS采样率                 | *             |
+| ad9910   | \~.c/\~.h       | ADI的DDS芯片，14bit，1GSPS采样率                     | *             |
+| ad9959   | \~.c/\~.h       | ADI的DDS芯片，四通道，500MSPS采样率                  | *             |
 | adf4351  | \~.c/\~.h       | 锁相环，35 MHz to 4.4 GHz                           | *             |
-| dht11    | \~.c/\~.h       | 温湿度传感器，单总线                                | *             |
+| dht11    | \~.c/\~.h       | 温湿度传感器，单总线                                 | *             |
 | ds1302   | \~.c/\~.h       | 实时时钟RTC                                         | 类IIC         |
 | ds1307   | \~.c/\~.h       | 实时时钟RTC                                         | IIC           |
-| eeprom   | \~.c/\~.h       | 存储芯片（24c02，24c32）                            | IIC           |
-| esp8266  | esp.c/esp.h     | WIFI模块，AT指令驱动（物联网的话建议搭配iot库使用）   | UART          |
-| gy30     | \~.c/\~.h       | 数字光强传感器，IIC接口                             | IIC           |
-| hmc472   | \~.c/\~.h       | 数字步进衰减器，                                    | 并行接口      |
-| hmi      | \~.c/\~.h       | HMI串口屏，串口驱动                                 | UART          |
-| lcd1602  | \~.c/\~.h       | 经典LCD液晶屏，16列2行，支持8个自定义字符，         | 并行接口／IIC |
+| eeprom   | \~.c/\~.h       | 存储芯片（24c02，24c32）                             | IIC           |
+| esp8266  | esp.c/esp.h     | WIFI模块，AT指令驱动（物联网的话建议搭配iot库使用）    | UART          |
+| gy30     | \~.c/\~.h       | 数字光强传感器，IIC接口                              | IIC           |
+| hmc472   | \~.c/\~.h       | 数字步进衰减器，                                     | 并行接口      |
+| hmi      | \~.c/\~.h       | HMI串口屏，串口驱动                                  | UART          |
+| lcd1602  | \~.c/\~.h       | 经典LCD液晶屏，16列2行，支持8个自定义字符，            | 并行接口／IIC |
 | max262   | \~.c/\~.h       | 程控滤波器                                          | *             |
 | nrf24l01 | \~.c/\~.h       | 2.4G无线传输模块                                    | SPI           |
-| SSD1306  | oled.c/oled.h | 经典0.96寸的OLED驱动，建议搭配mygui库使用           | IIC/SPI       |
+| SSD1306  | oled.c/oled.h   | 经典0.96寸的OLED驱动，建议搭配mygui库使用             | IIC/SPI       |
+| mfrc522  | rc522.c/rc522.h | RFID芯片，支持ISO14443A/MIFARE                      | SPI          |
 | rda5820  | \~.c/\~.h       | FM收发芯片                                          | IIC           |
 | W5500    | \~.c/\~.h       | 以太网芯片                                          | SPI           |
-| x9c103   | \~.c/\~.h       | 数字电位器（不推荐）                                | *             |
+| x9c103   | \~.c/\~.h       | 数字电位器（不推荐）                                 | *             |
 
 ### STM32 驱动相关(Lib for STM32)
 
@@ -52,13 +53,13 @@
 
 | 文件            | 备注                      |
 | --------------- | ------------------------- |
-| _template.c/_template.h         | 库模板              |
+| _template.c/_template.h         | 库模板     |
 | fonts.h         | GUI使用的字体              |
 | iot.c/iot.h     | 物联网框架                |
 | mydsp.c/mydsp.h | 简单的信号处理            |
 | mygui.c/mygui.h | 简单的GUI框架             |
-| myiic.c/myiic.h | 模拟IIC通信 |
-| myspi.c/myspi.h | 模拟SPI通信 |
+| myiic.c/myiic.h | 模拟IIC通信               |
+| myspi.c/myspi.h | 模拟SPI通信               |
 | mytask.c/mytask.h | 类Arduino风格，减少对生成代码的修改 |
 
 ## 使用

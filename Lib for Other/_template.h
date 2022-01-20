@@ -1,15 +1,15 @@
 /*******************************************************************************
  * @file     xxxx.h
- * @brief    
+ * @brief
  * @version  V1.0
- * @date     2021.x.x
- * @author   RainingRabbits 1466586342@qq.com
+ * @date     xxxx.x.x
+ * @author   auther email@example.com
  * @code     UTF-8
 *******************************************************************************/
 /*******************************************************************************
 TIPS:
 	
-EXAMPLE CODE:
+EXAMPLE:
 	
 *******************************************************************************/
 #ifndef __xxxx_H
@@ -18,7 +18,6 @@ EXAMPLE CODE:
 extern "c" {
 #endif
 
-#include "stm32f1xx_hal.h"
 #include "stdint.h"
 
 

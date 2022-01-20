@@ -2,8 +2,8 @@
  * @file     xxxx.c
  * @brief
  * @version  V1.0
- * @date     2021.x.x
- * @author   RainingRabbits 1466586342@qq.com
+ * @date     xxxx.x.x
+ * @author   auther email@example.com
  * @code     UTF-8
 *******************************************************************************/
 

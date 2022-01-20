@@ -42,12 +42,12 @@
 ### STM32 驱动相关(Lib for STM32)
 
 | 文件              | 备注                            |
-| :---------------- | ------------------------------- |
-| base.c/base.h     | IO（KEY和LED），串口的快速使用  |
+| :---------------- | ------------------------------ |
+| base.c/base.h     | IO，串口的快速使用               |
 | myadc.c/myadc.h   | ADC采样                         |
 | mydac.c/mydac.h   | DAC输出波形                     |
-| mytim.c/mytim.h   | 定时器的重新配置                |
-| myuart.c/myuart.h | 使用DMA和buffer的串口，效率更高 |
+| mytim.c/mytim.h   | 定时器的重新配置                 |
+| myuart.c/myuart.h | 使用DMA和buffer的串口，效率更高   |
 
 ### 其他相关(Lib for Other)
 

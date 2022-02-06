@@ -15,10 +15,10 @@ TIPS:
         - config DMA USART_RX ;
         - put the UART_IDLE_Handler() in UARTx_IRQHandler() funcition, which
           belong to stm32f1xx_it.c ;
-        - run UART_IDLE_Init() at the begining of your program ;
+        - run UART_IDLE_Init() at the begining of your code ;
         - MCU will call UARTx_IDLE_Callback() if the IDLE interrupt occured,
           so rewrite your own callback functions as it is __weak type.
-    
+
 *******************************************************************************/
 #ifndef __BASE_H
 #define __BASE_H
@@ -30,17 +30,22 @@ extern "c" {
 #include "stm32f1xx.h"
 
 
-/**************** basic functions enable macros ************************/
+    /**************** basic functions enable macros ************************/
 
 #define     BASE_IO              		1
-#define     BASE_UART_PRINTF     		1
-#define     BASE_UART_DMA_TRANSMIT  0
+#define     BASE_UART_PRINTF     		0
+#define     BASE_USB_PRINTF     		1
+#define     BASE_UART_DMA_TRANSMIT      0
 #define	   	BASE_UART_DMA_RECEIVE		0
 
 #if ( BASE_UART_PRINTF == 1 ||  BASE_UART_DMA_TRANSMIT== 1 || BASE_UART_DMA_RECEIVE == 1 )
 #include "usart.h"
 #include "stm32f1xx_hal_uart.h"
 #define     UART_BUFFER_LEN             256
+#endif
+
+#if ( BASE_USB_PRINTF == 1 )
+#define     USB_BUFFER_LEN              256
 #endif
 
 
@@ -59,7 +64,7 @@ extern "c" {
 #endif
 
 
-/************************* BASE_IO ****************************/
+    /************************* BASE_IO ****************************/
 
 #if (BASE_IO == 1)
 
@@ -74,56 +79,69 @@ extern "c" {
 
 #endif
 
-/******************** BASE_UART_PRINTF ****************************/
-
-#if (BASE_UART_PRINTF == 1)
-
-int         Myprintf            (const char * format, ...);
-
+    /******************** BASE_DEFAULT_PRINTF ****************************/
+#if     (BASE_USB_PRINTF == 1)
+#define     myprintf                    usb_printf
+#elif (BASE_UART_PRINTF == 1)
+#define     myprintf                    uart_printf
 #endif
 
-/****************** BASE_UART_DMA_TRANSMIT ************************/
+    /******************** BASE_USB_PRINTF ****************************/
+#if (BASE_USB_PRINTF == 1)
+    int         usb_printf             (const char * format, ...);
+#endif
+    /******************** BASE_UART_PRINTF ****************************/
+
+#if (BASE_UART_PRINTF == 1)
+    int         uart_printf            (const char * format, ...);
+#endif
+
+
+
+
+
+    /****************** BASE_UART_DMA_TRANSMIT ************************/
 #if (BASE_UART_DMA_TRANSMIT == 1)
 
 #if (UART1_DMA_TRANSMIT == 1)
-extern uint8_t UART1_TxBuffer[UART_BUFFER_LEN];
+    extern uint8_t UART1_TxBuffer[UART_BUFFER_LEN];
 #endif
 #if (UART2_DMA_TRANSMIT == 1)
-extern uint8_t UART2_TxBuffer[UART_BUFFER_LEN];
+    extern uint8_t UART2_TxBuffer[UART_BUFFER_LEN];
 #endif
 #if (UART3_DMA_TRANSMIT == 1)
-extern uint8_t UART3_TxBuffer[UART_BUFFER_LEN];
+    extern uint8_t UART3_TxBuffer[UART_BUFFER_LEN];
 #endif
 #if (UART4_DMA_TRANSMIT == 1)
-extern uint8_t UART4_TxBuffer[UART_BUFFER_LEN];
+    extern uint8_t UART4_TxBuffer[UART_BUFFER_LEN];
 #endif
 
-void        UART_DMA_Transmintf (UART_HandleTypeDef *huart,const char * format, ...);
-void        UART_DMA_Transmint  (UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size);
+    void        UART_DMA_Transmintf (UART_HandleTypeDef *huart,const char * format, ...);
+    void        UART_DMA_Transmint  (UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size);
 #endif
 
-/***************** BASE_UART_DMA_RECEIVE *************************/
+    /***************** BASE_UART_DMA_RECEIVE *************************/
 #if (BASE_UART_DMA_RECEIVE == 1)
 
 #if (UART1_DMA_RECEIVE == 1)
-extern uint8_t UART1_RxBuffer[UART_BUFFER_LEN];
-void UART1_IDLE_Callback(uint8_t *data,uint16_t len);
+    extern uint8_t UART1_RxBuffer[UART_BUFFER_LEN];
+    void UART1_IDLE_Callback(uint8_t *data,uint16_t len);
 #endif
 #if (UART2_DMA_RECEIVE == 1)
-extern uint8_t UART2_RxBuffer[UART_BUFFER_LEN];
-void UART2_IDLE_Callback(uint8_t *data,uint16_t len);
+    extern uint8_t UART2_RxBuffer[UART_BUFFER_LEN];
+    void UART2_IDLE_Callback(uint8_t *data,uint16_t len);
 #endif
 #if (UART3_DMA_RECEIVE == 1)
-extern uint8_t UART3_RxBuffer[UART_BUFFER_LEN];
-void UART3_IDLE_Callback(uint8_t *data,uint16_t len);
+    extern uint8_t UART3_RxBuffer[UART_BUFFER_LEN];
+    void UART3_IDLE_Callback(uint8_t *data,uint16_t len);
 #endif
 #if (UART4_DMA_RECEIVE == 1)
-extern uint8_t UART4_RxBuffer[UART_BUFFER_LEN];
-void UART4_IDLE_Callback(uint8_t *data,uint16_t len);
+    extern uint8_t UART4_RxBuffer[UART_BUFFER_LEN];
+    void UART4_IDLE_Callback(uint8_t *data,uint16_t len);
 #endif
 
-void        UART_IDLE_Init      (void);
-void        UART_IDLE_Handler   (UART_HandleTypeDef *huart);
+    void        UART_IDLE_Init      (void);
+    void        UART_IDLE_Handler   (UART_HandleTypeDef *huart);
 
 #endif
 

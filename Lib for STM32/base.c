@@ -18,7 +18,7 @@
 
 char _dat_printf[UART_BUFFER_LEN];
 
-int Myprintf(const char * format, ...)
+int uart_printf(const char * format, ...)
 {
     va_list arg_ptr;
     int nBytes ;
@@ -30,9 +30,28 @@ int Myprintf(const char * format, ...)
     while ( !(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_TC)) );
     HAL_UART_Transmit(&huart1,(uint8_t *)_dat_printf, nBytes,1000);
     
-    // Or send it by your other function
-//#include "usbd_cdc_if.h"
-    //CDC_Transmit_FS((uint8_t *)_dat_printf, nBytes);
+    return nBytes;
+}
+
+#endif
+
+#if (BASE_USB_PRINTF == 1)
+
+#include "usbd_cdc_if.h"
+#include <stdio.h>
+#include <stdarg.h>
+
+char _dat_printf[USB_BUFFER_LEN];
+
+int usb_printf(const char * format, ...)
+{
+    va_list arg_ptr;
+    int nBytes ;
+    va_start(arg_ptr, format);
+    nBytes = vsprintf(_dat_printf, format, arg_ptr);
+    va_end(arg_ptr);
+    
+    CDC_Transmit_FS((uint8_t *)_dat_printf, nBytes);
     
     return nBytes;
 }

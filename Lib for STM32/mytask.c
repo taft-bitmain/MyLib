@@ -10,13 +10,18 @@
 #include "mytask.h"
 #include "base.h"
 
+
+
 void setup(void)
 {
-	Myprintf("Program start!\r\n");
+    myprintf("Program start!\r\n");
 }
 
 
+
 void loop(void)
-{    
-    
+{
+    static int i;
+    myprintf("tick %d\r\n",i++);
+    HAL_Delay(1000);
 }

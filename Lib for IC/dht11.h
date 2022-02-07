@@ -8,11 +8,13 @@
 *******************************************************************************/
 /*******************************************************************************
 TIPS:
-
+    1. Config the pin as GPIO Ouptput Open Drain and pull-up.
+    2. Reading the DHT11 too frequently may occur errors, 500 ms is suitable.
 EXAMPLE CODE:
-	DHT11_Data d;
+	
 	while (1)
 	{
+        static DHT11_Data d;
 		if(DHT11_ReadData(&d))
 			HAL_UART_Transmit(&huart1,(uint8_t*)d.string,d.strlen,1000);
 		else
@@ -27,14 +29,14 @@ EXAMPLE CODE:
 extern "c" {
 #endif
 
-#include "stm32f4xx_hal.h"
+#include "stm32f1xx_hal.h"
 
 
-#define DATA_GPIO_Port		GPIOA
-#define DATA_Pin			    GPIO_PIN_4
+#define DATA_GPIO_Port		    GPIOC
+#define DATA_Pin			    GPIO_PIN_0
 
-#define DHT11_DATA_READ		   HAL_GPIO_ReadPin (DATA_GPIO_Port,DATA_Pin)
-#define DHT11_DATA_WRITE(x)	 HAL_GPIO_WritePin(DATA_GPIO_Port,DATA_Pin,x?GPIO_PIN_SET:GPIO_PIN_RESET)
+#define DHT11_DATA_READ         HAL_GPIO_ReadPin (DATA_GPIO_Port,DATA_Pin)
+#define DHT11_DATA_WRITE(x)     HAL_GPIO_WritePin(DATA_GPIO_Port,DATA_Pin,x?GPIO_PIN_SET:GPIO_PIN_RESET)
 
 
 typedef struct{
@@ -48,7 +50,7 @@ typedef struct{
 
 
 void	DHT11_DelayUs  	(unsigned int x); 
-void	DHT11_DelayMs	  (unsigned int x);
+void	DHT11_DelayMs	(unsigned int x);
 char	DHT11_ReadBits	(char *data);
 char	DHT11_ReadData	(DHT11_Data *data);
 

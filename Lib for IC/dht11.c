@@ -11,13 +11,13 @@
 
 void DHT11_DelayUs(unsigned int x)
 {
-	uint32_t t = x * 60;
+	uint32_t t = x * 48;
 	while(t--);
 }
 
 void DHT11_DelayMs(unsigned int x)
 {
-	HAL_Delay(x);
+	HAL_Delay(x*1000);
 }
 
 void DHT11_DATA_OUT(void)
@@ -121,7 +121,7 @@ char DHT11_ReadData(DHT11_Data *data)
 	data->temp_f = tmp[3] & 0x7F;
 	data->temp = data->temp_i + data->temp_f*0.1;
 	
-  sprintf(data->string,"HUMI:%d%% TEMP:%dC",data->humi,(int)data->temp);
+    sprintf(data->string,"HUMI:%d%% TEMP:%dC",data->humi,(int)data->temp);
   
 	return 1;
 }

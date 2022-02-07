@@ -59,7 +59,7 @@
 | iot.c/iot.h     | 物联网框架                |
 | mydsp.c/mydsp.h | 简单的信号处理            |
 | mygui.c/mygui.h | 简单的GUI框架             |
-| myiic.c/myiic.h | 模拟IIC通信               |
+| myi2c.c/myi2c.h | 模拟IIC通信               |
 | myspi.c/myspi.h | 模拟SPI通信               |
 
 ## 使用

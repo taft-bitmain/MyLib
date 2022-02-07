@@ -1,5 +1,5 @@
 /*******************************************************************************
- * @file     oled.c
+ * @file     ssd1306.h
  * @brief    drive the oled with SSD1306
  * @version  V1.3
  * @date     2021.7.29
@@ -8,7 +8,7 @@
  * @code     UTF-8
  ******************************************************************************/
 
-#include "oled.h"
+#include "ssd1306.h"
 
 /***************** Basic Interface *****************/
 
@@ -28,7 +28,7 @@ void OLED_SendCmd(uint8_t *data,unsigned int len)
 {
     
 #if ( OLED_INTERFACE == 0 )
-	MyIIC_WriteMem(&myiic1,OLED_IIC_CMD,data,len);
+	MyI2C_WriteMem(&myi2c1,OLED_I2C_CMD,data,len);
 #else
 	OLED_WritePinDC(0);
 	MySPI_Write(&myspi1,data,len);
@@ -37,7 +37,7 @@ void OLED_SendCmd(uint8_t *data,unsigned int len)
 void OLED_SendData(uint8_t *data,unsigned int len)
 {
 #if ( OLED_INTERFACE == 0 )
-	MyIIC_WriteMem(&myiic1,OLED_IIC_DATA,data,len);
+	MyI2C_WriteMem(&myi2c1,OLED_I2C_DATA,data,len);
 #else
 	OLED_WritePinDC(1);
 	MySPI_Write(&myspi1,data,len);
@@ -50,8 +50,8 @@ void OLED_SendData(uint8_t *data,unsigned int len)
 void OLED_DisPlay_Power(uint8_t flag)
 {
 	uint8_t cmd[3] = {
-		OLED_uint8_tGEPUMP,
-		flag==0?OLED_uint8_tGEPUMP_0:OLED_uint8_tGEPUMP_1,
+		OLED_GEPUMP,
+		flag==0?OLED_GEPUMP_0:OLED_GEPUMP_1,
 		flag==0?OLED_DISPLAY_0:OLED_DISPLAY_1
 	};
 	OLED_SendCmd(cmd,3);
@@ -227,24 +227,27 @@ void OLED_Init(void)
 	OLED_DisPlay_Power(0);
 	OLED_DisPlay_EntireOn(0);
 	OLED_DisPlay_Inverse(0);
-	OLED_DisPlay_Contrast(0x7F);
+	OLED_DisPlay_Contrast(0xFF);
 	OLED_DisPlay_CulRemap(1);
 	OLED_DisPlay_RowRemap(1);
+    
 	OLED_Address_Mode(OLED_ADDRMODE_2);
 	OLED_Address_Page_M2(0);
 	OLED_Address_Culumn_M2(0);
-/***************************
-	OLED_Address_Mode(OLED_ADDRMODE_0);
-	OLED_Address_Culumn_M0M1(0,127);
-	OLED_Address_Page_M0M1(0,7);
-	OLED_Set_Clock(0x80);
-***************************/
+//  or
+//	OLED_Address_Mode(OLED_ADDRMODE_0);
+//	OLED_Address_Culumn_M0M1(0,127);
+//	OLED_Address_Page_M0M1(0,7);
+
 	OLED_Set_Clock(0xF0);
 	OLED_Set_Precharge(0x22);
 	OLED_Set_Vcomh(0x20);
-	OLED_Set_MuxRatio(63);
+	OLED_Set_MuxRatio(OLED_Y_MAX - 1);
 	OLED_Set_Offset(0x00);
-	OLED_Set_COMPinCfg(OLED_COMPINCFG_1);
+    
+    /*********** todo *****************/
+	OLED_Set_COMPinCfg(OLED_COMPINCFG_0);
+    
 	OLED_DisPlay_Power(1);
 }
 

@@ -1,5 +1,5 @@
 /********************************************************************************
- * @file     oled.h
+ * @file     ssd1306.h
  * @brief    drive the oled with SSD1306
  * @version  V1.3
  * @date     2021.7.29
@@ -9,9 +9,9 @@
  *******************************************************************************/
  /*******************************************************************************
 TIPS:
-    
+    1. Diffierent oled size have different COM_PIN_CONFIGRATION, look up the datasheet.
 EXAMPLE CODE:
-	OLED_Init();
+	// reference to mygui.c/.h
 
 *******************************************************************************/
 
@@ -19,7 +19,7 @@ EXAMPLE CODE:
 #define __OLED_H
 
 #define OLED_X_MAX 128
-#define OLED_Y_MAX 64
+#define OLED_Y_MAX 32
 
 /*
     0 for i2c, and 1 for 4-spi.
@@ -27,22 +27,22 @@ EXAMPLE CODE:
     It will send nine bits during a write cycle,
     and its MSB stand for DATA (1) or CMD (0).
 */
-#define OLED_INTERFACE  1
+#define OLED_INTERFACE  0
 
 /****************** Basic Interface *************************/
 
 #if ( OLED_INTERFACE == 0 )
 
-#include "myiic.h"
+#include "myi2c.h"
 
-#define OLED_IIC_ADDR	0x78
-#define OLED_IIC_CMD	0x00
-#define OLED_IIC_DATA	0x40
+#define OLED_I2C_ADDR	0x78
+#define OLED_I2C_CMD	0x00
+#define OLED_I2C_DATA	0x40
 
-static MyIIC myiic1 = {
-	.SCL_Port = GPIOG,.SCL_Bit = GPIO_PIN_2,
-	.SDA_Port = GPIOG,.SDA_Bit = GPIO_PIN_4,
-	.Speed = 1 ,.DevAddr = OLED_IIC_ADDR
+static MyI2C myi2c1 = {
+	.SCL_Port = GPIOB,.SCL_Bit = GPIO_PIN_10,
+	.SDA_Port = GPIOB,.SDA_Bit = GPIO_PIN_0,
+	.Speed = 1 ,.DevAddr = OLED_I2C_ADDR
 };
 
 #else
@@ -172,9 +172,9 @@ void OLED_RefreshByIndex	    (uint8_t *index,uint8_t *data);
 #define OLED_NOP				0xE3
 
 //MISC
-#define OLED_uint8_tGEPUMP      0x8D
-#define OLED_uint8_tGEPUMP_0    0x10
-#define OLED_uint8_tGEPUMP_1    0x14
+#define OLED_GEPUMP             0x8D
+#define OLED_GEPUMP_0           0x10
+#define OLED_GEPUMP_1           0x14
 
 #define OLED_DUMMY_BYTE_00	    0x00
 #define OLED_DUMMY_BYTE_FF	    0xFF

@@ -24,7 +24,7 @@ void OLED_SendInit(void)
 #endif
 }
 
-void OLED_SendCmd(uint8_t *data,unsigned int len)
+inline void OLED_SendCmd(uint8_t *data,unsigned int len)
 {
     
 #if ( OLED_INTERFACE == 0 )
@@ -34,7 +34,7 @@ void OLED_SendCmd(uint8_t *data,unsigned int len)
 	MySPI_Write(&myspi1,data,len);
 #endif
 }
-void OLED_SendData(uint8_t *data,unsigned int len)
+inline void OLED_SendData(uint8_t *data,unsigned int len)
 {
 #if ( OLED_INTERFACE == 0 )
 	MyI2C_WriteMem(&myi2c1,OLED_I2C_DATA,data,len);

@@ -33,6 +33,7 @@
 | hmi      | \~.c/\~.h       | HMI串口屏，串口驱动                                  | UART          |
 | lcd1602  | \~.c/\~.h       | 经典LCD液晶屏，16列2行，支持8个自定义字符，            | 并行接口／IIC |
 | max262   | \~.c/\~.h       | 程控滤波器                                          | *             |
+| mlx90614 | \~.c/\~.h       | 高精度温度传感器                                     | IIC             |
 | nrf24l01 | \~.c/\~.h       | 2.4G无线传输模块                                    | SPI           |
 | SSD1306  | \~.c/\~.h       | 经典OLED驱动，建议搭配mygui库使用                    | IIC/SPI       |
 | mfrc522  | rc522.c/rc522.h | RFID芯片，支持ISO14443A/MIFARE                      | SPI          |

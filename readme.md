@@ -40,6 +40,7 @@
 | mfrc522  | rc522.c/rc522.h | RFID芯片，支持ISO14443A/MIFARE                      | SPI          |
 | rda5820  | \~.c/\~.h       | FM收发芯片                                          | IIC           |
 | W5500    | \~.c/\~.h       | 以太网芯片                                          | SPI           |
+| ws2812b  | \~.c/\~.h       | 彩色LED                                            | *             |
 | x9c103   | \~.c/\~.h       | 数字电位器（不推荐）                                 | *             |
 
 ### STM32 驱动相关(Lib for STM32)

@@ -46,7 +46,7 @@ static MyI2C mpu6050_i2c = {
 uint8_t     MPU6050_ReadReg     ( uint8_t regaddr );
 uint8_t     MPU6050_ReadRegs    ( uint8_t regaddr,uint8_t * pdat,uint16_t len );
 uint8_t     MPU6050_WriteReg    ( uint8_t regaddr,uint8_t dat );
-void        MPU6050_Delayms     ( uint16_t ms );
+void        MPU6050_DelayMs     ( uint16_t ms );
 
 /****************** Main Functions *************************/
 

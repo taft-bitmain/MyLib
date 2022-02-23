@@ -51,7 +51,11 @@ int usb_printf(const char * format, ...)
     nBytes = vsprintf(_dat_printf, format, arg_ptr);
     va_end(arg_ptr);
     
-    CDC_Transmit_FS((uint8_t *)_dat_printf, nBytes);
+    int trytimes = 3000;
+    while ( trytimes-- && CDC_Transmit_FS((uint8_t *)_dat_printf, nBytes) != USBD_OK )
+    {
+        //HAL_Delay( 1 );
+    }
     
     return nBytes;
 }

@@ -11,6 +11,14 @@ TIPS:
     1. This is for 48MHz system clock
 	
 EXAMPLE:
+
+    HAL_Delay(1000);
+    WS2812B_SetColor( 0x800000 );
+    HAL_Delay(1000);
+    WS2812B_SetColor( 0x008000 );
+    HAL_Delay(1000);
+    WS2812B_SetColor( 0x000080 );
+
 *******************************************************************************/
 
 #ifndef __WS2812B_H

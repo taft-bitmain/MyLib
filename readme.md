@@ -55,6 +55,7 @@
 | mytask.c/mytask.h | 类Arduino风格，减少对生成代码的修改 |
 | mytim.c/mytim.h   | 定时器的重新配置                 |
 | myuart.c/myuart.h | 使用DMA和buffer的串口，效率更高   |
+| servo.c/servo.h   | 普通舵机驱动                     |
 | stepmotor.c/stepmotor.h | 4相8拍步进电机              |
 
 ### 其他相关(Lib for Other)

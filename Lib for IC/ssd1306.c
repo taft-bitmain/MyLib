@@ -1,10 +1,9 @@
 /*******************************************************************************
- * @file     ssd1306.c
+ * @file     ssd1306.h
  * @brief    drive the oled with SSD1306
- * @version  V1.3
- * @date     2021.7.29
+ * @version  V1.4
+ * @date     2022.2.28
  * @author   RainingRabbits 1466586342@qq.com
- * @note     see https://blog.csdn.net/qq_36461474/article/details/112591234
  * @code     UTF-8
  ******************************************************************************/
 
@@ -12,263 +11,277 @@
 
 /***************** Basic Interface *****************/
 
-void OLED_SendInit(void)
+
+#ifdef SSD1306_IF_I2C                   // I2C
+
+inline void SSD1306_LL_Init(void)
 {
-#if ( OLED_INTERFACE == 0 )
-	;
-#else
-	OLED_WritePinRST(0);
-    MySPI_IO_Init(&myspi1);
-	HAL_Delay(1);
-	OLED_WritePinRST(1);
-#endif
+    myi2c_io_init(&ssd1306_i2c);
 }
 
-inline void OLED_SendCmd(uint8_t *data,unsigned int len)
+inline void SSD1306_LL_SendCmd(uint8_t *data,unsigned int len)
 {
-    
-#if ( OLED_INTERFACE == 0 )
-	MyI2C_WriteMem(&myi2c1,OLED_I2C_CMD,data,len);
-#else
-	OLED_WritePinDC(0);
-	MySPI_Write(&myspi1,data,len);
-#endif
+	myi2c_write_bytes(&ssd1306_i2c, SSD1306_I2C_CMD, 1, data, len);
 }
-inline void OLED_SendData(uint8_t *data,unsigned int len)
+inline void SSD1306_LL_SendData(uint8_t *data,unsigned int len)
 {
-#if ( OLED_INTERFACE == 0 )
-	MyI2C_WriteMem(&myi2c1,OLED_I2C_DATA,data,len);
-#else
-	OLED_WritePinDC(1);
-	MySPI_Write(&myspi1,data,len);
-#endif
+	myi2c_write_bytes(&ssd1306_i2c, SSD1306_I2C_DATA, 1, data, len);
 }
 
-/************* Basic Interface end *****************/
+#endif
 
 
-void OLED_DisPlay_Power(uint8_t flag)
+#ifdef SSD1306_IF_SPI                   // SPI
+
+void SSD1306_SendInit(void)
+{
+	SSD1306_LL_PinRST(0);
+    myspi_io_init(&ssd1306_spi);
+	SSD1306_LL_PinRST(1);
+}
+
+inline void SSD1306_LL_SendCmd(uint8_t *data,unsigned int len)
+{
+	SSD1306_LL_PinDC(0);
+	myspi_write(&ssd1306_spi,data,len);
+}
+
+inline void SSD1306_LL_SendData(uint8_t *data,unsigned int len)
+{
+	SSD1306_LL_PinDC(1);
+	myspi_write(&ssd1306_spi,data,len);
+}
+
+#endif
+
+
+
+
+
+/******************* Main Functions **************************/
+
+void SSD1306_DisPlay_Power(uint8_t flag)
 {
 	uint8_t cmd[3] = {
-		OLED_GEPUMP,
-		flag==0?OLED_GEPUMP_0:OLED_GEPUMP_1,
-		flag==0?OLED_DISPLAY_0:OLED_DISPLAY_1
+		SSD1306_GEPUMP,
+		flag==0?SSD1306_GEPUMP_0:SSD1306_GEPUMP_1,
+		flag==0?SSD1306_DISPLAY_0:SSD1306_DISPLAY_1
 	};
-	OLED_SendCmd(cmd,3);
+	SSD1306_LL_SendCmd(cmd,3);
 }
 
-void OLED_DisPlay_EntireOn(uint8_t flag)
+void SSD1306_DisPlay_EntireOn(uint8_t flag)
 {
-	uint8_t cmd[1] = {	flag==0? OLED_ENTIREON_0: OLED_ENTIREON_1};
-	OLED_SendCmd(cmd,1);
+	uint8_t cmd[1] = {	flag==0? SSD1306_ENTIREON_0: SSD1306_ENTIREON_1};
+	SSD1306_LL_SendCmd(cmd,1);
 }
 
-void OLED_DisPlay_Inverse(uint8_t flag)
+void SSD1306_DisPlay_Inverse(uint8_t flag)
 {
-	uint8_t cmd[1] = {	flag==0? OLED_INVERSE_0:OLED_INVERSE_1 };
-	OLED_SendCmd(cmd,1);
+	uint8_t cmd[1] = {	flag==0? SSD1306_INVERSE_0:SSD1306_INVERSE_1 };
+	SSD1306_LL_SendCmd(cmd,1);
 }	
 
-void OLED_DisPlay_Contrast(uint8_t level)
+void SSD1306_DisPlay_Contrast(uint8_t level)
 {
-	uint8_t cmd[2] = {OLED_CONTRAST,OLED_CONTRAST_MASK&level};
-	OLED_SendCmd(cmd,2);
+	uint8_t cmd[2] = {SSD1306_CONTRAST,SSD1306_CONTRAST_MASK&level};
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_DisPlay_CulRemap(uint8_t flag)
+void SSD1306_DisPlay_CulRemap(uint8_t flag)
 {
-	uint8_t cmd[1] = {	flag==0?OLED_SEGREMAP_0:OLED_SEGREMAP_1};
-	OLED_SendCmd(cmd,1);
+	uint8_t cmd[1] = {	flag==0?SSD1306_SEGREMAP_0:SSD1306_SEGREMAP_1};
+	SSD1306_LL_SendCmd(cmd,1);
 }	
 
-void OLED_DisPlay_RowRemap(uint8_t flag)
+void SSD1306_DisPlay_RowRemap(uint8_t flag)
 {
-	uint8_t cmd[1] = {	flag==0? OLED_OUTPUTDIR_0:OLED_OUTPUTDIR_1 };
-	OLED_SendCmd(cmd,1);
+	uint8_t cmd[1] = {	flag==0? SSD1306_OUTPUTDIR_0:SSD1306_OUTPUTDIR_1 };
+	SSD1306_LL_SendCmd(cmd,1);
 }
 
 //FPS 0,1,2,3,4,5,6,7 -> 2,3,4,5,25,64,128,256
 const uint8_t SPEED_FPS[8]={7,4,5,0,6,1,2,3};
 
-void OLED_Display_HScroll(uint8_t dir,uint8_t start_page,uint8_t end_page,uint8_t speed)
+void SSD1306_Display_HScroll(uint8_t dir,uint8_t start_page,uint8_t end_page,uint8_t speed)
 {
 	if(end_page<start_page)
 		end_page = start_page;
 	uint8_t cmd[9] = {
-		OLED_SCROLL_DISABLE,
-		dir==0? OLED_HSCROLL_0:OLED_HSCROLL_1, 
-		OLED_DUMMY_BYTE_00,
-		OLED_HSCROLL_MASK1&start_page,
-		SPEED_FPS[OLED_HSCROLL_MASK2&speed],
-		OLED_HSCROLL_MASK3&end_page,
-		OLED_DUMMY_BYTE_00,
-		OLED_DUMMY_BYTE_FF,
-		OLED_SCROLL_ENABLE
+		SSD1306_SCROLL_DISABLE,
+		dir==0? SSD1306_HSCROLL_0:SSD1306_HSCROLL_1, 
+		SSD1306_DUMMY_BYTE_00,
+		SSD1306_HSCROLL_MASK1&start_page,
+		SPEED_FPS[SSD1306_HSCROLL_MASK2&speed],
+		SSD1306_HSCROLL_MASK3&end_page,
+		SSD1306_DUMMY_BYTE_00,
+		SSD1306_DUMMY_BYTE_FF,
+		SSD1306_SCROLL_ENABLE
 	};
-	OLED_SendCmd(cmd,9);
+	SSD1306_LL_SendCmd(cmd,9);
 }
 
-void OLED_Display_VHScroll(uint8_t dir,uint8_t start_page,uint8_t end_page,uint8_t speed,uint8_t offset)
+void SSD1306_Display_VHScroll(uint8_t dir,uint8_t start_page,uint8_t end_page,uint8_t speed,uint8_t offset)
 {
 	if(end_page<start_page)
 		end_page = start_page;
 	uint8_t cmd[8] = {
-		OLED_SCROLL_DISABLE,
-		dir==0? OLED_VHSCROLL_0:OLED_VHSCROLL_1, 
-		OLED_DUMMY_BYTE_00,
-		OLED_VHSCROLL_MASK1&start_page,
-		SPEED_FPS[OLED_VHSCROLL_MASK2&speed],
-		OLED_VHSCROLL_MASK3&end_page,
-		OLED_VHSCROLL_MASK4&offset,
-		OLED_SCROLL_ENABLE
+		SSD1306_SCROLL_DISABLE,
+		dir==0? SSD1306_VHSCROLL_0:SSD1306_VHSCROLL_1, 
+		SSD1306_DUMMY_BYTE_00,
+		SSD1306_VHSCROLL_MASK1&start_page,
+		SPEED_FPS[SSD1306_VHSCROLL_MASK2&speed],
+		SSD1306_VHSCROLL_MASK3&end_page,
+		SSD1306_VHSCROLL_MASK4&offset,
+		SSD1306_SCROLL_ENABLE
 	};
-	OLED_SendCmd(cmd,8);
+	SSD1306_LL_SendCmd(cmd,8);
 }
 
-void OLED_Display_VScrollArea(uint8_t row_start,uint8_t row_length)
+void SSD1306_Display_VScrollArea(uint8_t row_start,uint8_t row_length)
 {
 	uint8_t cmd[3] = {
-		OLED_VSCROLLAREA,
-		OLED_VSCROLLAREA_MASK1&row_start,
-		OLED_VSCROLLAREA_MASK2&row_length,
+		SSD1306_VSCROLLAREA,
+		SSD1306_VSCROLLAREA_MASK1&row_start,
+		SSD1306_VSCROLLAREA_MASK2&row_length,
 	};
-	OLED_SendCmd(cmd,3);
+	SSD1306_LL_SendCmd(cmd,3);
 }
 
-void OLED_Display_ScrollStop(void)
+void SSD1306_Display_ScrollStop(void)
 {
-	uint8_t cmd[1] = {OLED_SCROLL_DISABLE};
-	OLED_SendCmd(cmd,1);
+	uint8_t cmd[1] = {SSD1306_SCROLL_DISABLE};
+	SSD1306_LL_SendCmd(cmd,1);
 }
 
-void OLED_Address_Mode(uint8_t mode)
+void SSD1306_Address_Mode(uint8_t mode)
 {
-	uint8_t cmd[2] = {OLED_SETMEMADDRMODE, mode};
-	OLED_SendCmd(cmd,2);
+	uint8_t cmd[2] = {SSD1306_SETMEMADDRMODE, mode};
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_Address_Culumn_M2(uint8_t addr)
+void SSD1306_Address_Culumn_M2(uint8_t addr)
 {
 	uint8_t cmd[2] = {
-		OLED_LCUL4PAGEADDR|(0x0F&(addr)),
-		OLED_HCUL4PAGEADDR|(0x0F&(addr>>4))
+		SSD1306_LCUL4PAGEADDR|(0x0F&(addr)),
+		SSD1306_HCUL4PAGEADDR|(0x0F&(addr>>4))
 	};
-	OLED_SendCmd(cmd,2);
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_Address_Page_M2(uint8_t addr)
+void SSD1306_Address_Page_M2(uint8_t addr)
 {
-	uint8_t cmd[1] = {OLED_SETPAGESTART|(0x07&addr)};
-	OLED_SendCmd(cmd,1);
+	uint8_t cmd[1] = {SSD1306_SETPAGESTART|(0x07&addr)};
+	SSD1306_LL_SendCmd(cmd,1);
 }
 
-void OLED_Address_Culumn_M0M1(uint8_t start,uint8_t end)
+void SSD1306_Address_Culumn_M0M1(uint8_t start,uint8_t end)
 {
 	uint8_t cmd[3] = {
-		OLED_SETCULADDR,
-		OLED_SETCULADDR_MASK1&start,
-		OLED_SETCULADDR_MASK2&end
+		SSD1306_SETCULADDR,
+		SSD1306_SETCULADDR_MASK1&start,
+		SSD1306_SETCULADDR_MASK2&end
 	};
-	OLED_SendCmd(cmd,3);
+	SSD1306_LL_SendCmd(cmd,3);
 }
 
-void OLED_Address_Page_M0M1(uint8_t start,uint8_t end)
+void SSD1306_Address_Page_M0M1(uint8_t start,uint8_t end)
 {
 	uint8_t cmd[3] = {
-		OLED_SETPAGEADDR,
-		OLED_SETPAGEADDR_MASK1&start,
-		OLED_SETPAGEADDR_MASK2&end
+		SSD1306_SETPAGEADDR,
+		SSD1306_SETPAGEADDR_MASK1&start,
+		SSD1306_SETPAGEADDR_MASK2&end
 	};
-	OLED_SendCmd(cmd,3);
+	SSD1306_LL_SendCmd(cmd,3);
 }
 
 
-void OLED_Set_Clock(uint8_t count)
+void SSD1306_Set_Clock(uint8_t count)
 {
-	uint8_t cmd[2] = {OLED_SETCLOCK,count};
-	OLED_SendCmd(cmd,2);
+	uint8_t cmd[2] = {SSD1306_SETCLOCK,count};
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_Set_Precharge(uint8_t count)
+void SSD1306_Set_Precharge(uint8_t count)
 {
-	uint8_t cmd[2] = {OLED_SETPREuint8_tGE,count};
-	OLED_SendCmd(cmd,2);
+	uint8_t cmd[2] = {SSD1306_SETPREuint8_tGE,count};
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_Set_Vcomh(uint8_t level)
+void SSD1306_Set_Vcomh(uint8_t level)
 {
-	uint8_t cmd[2] = {OLED_SETVCOMH,OLED_SETVCOMH_MASk&level};
-	OLED_SendCmd(cmd,2);
+	uint8_t cmd[2] = {SSD1306_SETVCOMH,SSD1306_SETVCOMH_MASk&level};
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_Set_MuxRatio(uint8_t count)
+void SSD1306_Set_MuxRatio(uint8_t count)
 {
 	if(count<15) count = 15;
 	if(count>63) count = 63;
-	uint8_t cmd[2] = {OLED_MULRATIO,count};
-	OLED_SendCmd(cmd,2);
+	uint8_t cmd[2] = {SSD1306_MULRATIO,count};
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_Set_Offset(uint8_t count)
+void SSD1306_Set_Offset(uint8_t count)
 {
-	uint8_t cmd[2] = {OLED_DISPOFFSET,OLED_DISPOFFSET_MASK&count};
-	OLED_SendCmd(cmd,2);
+	uint8_t cmd[2] = {SSD1306_DISPOFFSET,SSD1306_DISPOFFSET_MASK&count};
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_Set_COMPinCfg(uint8_t mode)
+void SSD1306_Set_COMPinCfg(uint8_t mode)
 {
-	uint8_t cmd[2] = {OLED_COMPINCFG,mode};
-	OLED_SendCmd(cmd,2);
+	uint8_t cmd[2] = {SSD1306_COMPINCFG,mode};
+	SSD1306_LL_SendCmd(cmd,2);
 }
 
-void OLED_Init(void)
+void SSD1306_Init(void)
 {
-    OLED_SendInit();
-	OLED_DisPlay_Power(0);
-	OLED_DisPlay_EntireOn(0);
-	OLED_DisPlay_Inverse(0);
-	OLED_DisPlay_Contrast(0xFF);
-	OLED_DisPlay_CulRemap(1);
-	OLED_DisPlay_RowRemap(1);
+    SSD1306_LL_Init();
+	SSD1306_DisPlay_Power(0);
+	SSD1306_DisPlay_EntireOn(0);
+	SSD1306_DisPlay_Inverse(0);
+	SSD1306_DisPlay_Contrast(0xFF);
+	SSD1306_DisPlay_CulRemap(1);
+	SSD1306_DisPlay_RowRemap(1);
     
-	OLED_Address_Mode(OLED_ADDRMODE_2);
-	OLED_Address_Page_M2(0);
-	OLED_Address_Culumn_M2(0);
+	SSD1306_Address_Mode(SSD1306_ADDRMODE_2);
+	SSD1306_Address_Page_M2(0);
+	SSD1306_Address_Culumn_M2(0);
 //  or
-//	OLED_Address_Mode(OLED_ADDRMODE_0);
-//	OLED_Address_Culumn_M0M1(0,127);
-//	OLED_Address_Page_M0M1(0,7);
+//	SSD1306_Address_Mode(SSD1306_ADDRMODE_0);
+//	SSD1306_Address_Culumn_M0M1(0,127);
+//	SSD1306_Address_Page_M0M1(0,7);
 
-	OLED_Set_Clock(0xF0);
-	OLED_Set_Precharge(0x22);
-	OLED_Set_Vcomh(0x20);
-	OLED_Set_MuxRatio(OLED_Y_MAX - 1);
-	OLED_Set_Offset(0x00);
+	SSD1306_Set_Clock(0xF0);
+	SSD1306_Set_Precharge(0x22);
+	SSD1306_Set_Vcomh(0x20);
+	SSD1306_Set_MuxRatio(SSD1306_Y_MAX - 1);
+	SSD1306_Set_Offset(0x00);
     
     /*********** todo *****************/
-	OLED_Set_COMPinCfg(OLED_COMPINCFG_0);
+	SSD1306_Set_COMPinCfg(SSD1306_COMPINCFG_0);
     
-	OLED_DisPlay_Power(1);
+	SSD1306_DisPlay_Power(1);
 }
 
-void  OLED_Refresh(uint8_t *data)
+void  SSD1306_Refresh(uint8_t *data)
 {
-    OLED_Address_Culumn_M0M1(0,127);
-    OLED_Address_Page_M0M1(0,7);
-    OLED_SendData(data,128*8);
+    SSD1306_Address_Culumn_M0M1(0,127);
+    SSD1306_Address_Page_M0M1(0,7);
+    SSD1306_LL_SendData(data,128*8);
 }
 
-void  OLED_RefreshByIndex(uint8_t *index,uint8_t *data)
+void  SSD1306_RefreshByIndex(uint8_t *index,uint8_t *data)
 {
 	int i;
-	for(i=0;i<OLED_Y_MAX/8;i++)
+	for(i=0;i<SSD1306_Y_MAX/8;i++)
 	{
 		if(index[i])
 		{
 			index[i] = 0;
-			OLED_Address_Page_M2(i);
-			OLED_Address_Culumn_M2(0);
-			OLED_SendData(data+OLED_X_MAX*i,128);
+			SSD1306_Address_Page_M2(i);
+			SSD1306_Address_Culumn_M2(0);
+			SSD1306_LL_SendData(data+SSD1306_X_MAX*i,128);
 		}
 	}
 }

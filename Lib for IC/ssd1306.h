@@ -57,8 +57,8 @@ static myi2c ssd1306_i2c =
 
 #include "myspi.h"
 
-#define SSD1306_LL_PinRST(x)		( x ? (GPIOx->BSRR = GPIO_PIN_x) : (GPIOE->BRR = GPIO_PIN_x) )
-#define SSD1306_LL_PinDC(x)		    ( x ? (GPIOx->BSRR = GPIO_PIN_x) : (GPIOE->BRR = GPIO_PIN_x) )
+#define SSD1306_LL_PinRST(x)		( x ? (GPIOx->BSRR = GPIO_PIN_x) : (GPIOx->BRR = GPIO_PIN_x) )
+#define SSD1306_LL_PinDC(x)		    ( x ? (GPIOx->BSRR = GPIO_PIN_x) : (GPIOx->BRR = GPIO_PIN_x) )
 
 static myspi ssd1306_spi =
 {

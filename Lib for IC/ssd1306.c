@@ -11,7 +11,6 @@
 
 /***************** Basic Interface *****************/
 
-
 #ifdef SSD1306_IF_I2C                   // I2C
 
 inline void SSD1306_LL_Init(void)
@@ -53,8 +52,6 @@ inline void SSD1306_LL_SendData(uint8_t *data,unsigned int len)
 }
 
 #endif
-
-
 
 
 

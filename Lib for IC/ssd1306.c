@@ -18,11 +18,11 @@ inline void SSD1306_LL_Init(void)
     myi2c_io_init(&ssd1306_i2c);
 }
 
-inline void SSD1306_LL_SendCmd(uint8_t *data,unsigned int len)
+inline void SSD1306_LL_SendCmd(uint8_t *data,uint16_t len)
 {
 	myi2c_write_bytes(&ssd1306_i2c, SSD1306_I2C_CMD, 1, data, len);
 }
-inline void SSD1306_LL_SendData(uint8_t *data,unsigned int len)
+inline void SSD1306_LL_SendData(uint8_t *data,uint16_t len)
 {
 	myi2c_write_bytes(&ssd1306_i2c, SSD1306_I2C_DATA, 1, data, len);
 }

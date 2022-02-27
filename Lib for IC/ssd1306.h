@@ -72,8 +72,8 @@ static myspi ssd1306_spi =
 #endif
 
 void    SSD1306_LL_Init             ( void );
-void    SSD1306_LL_SendCmd          ( uint8_t * data, unsigned int len );
-void    SSD1306_LL_SendData         ( uint8_t * data, unsigned int len );
+void    SSD1306_LL_SendCmd          ( uint8_t * data, uint16_t len );
+void    SSD1306_LL_SendData         ( uint8_t * data, uint16_t len );
 
 /******************* Main Functions **************************/
 

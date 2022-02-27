@@ -1,20 +1,20 @@
 /*******************************************************************************
  * @file     myi2c.c
  * @brief    simulation i2c interface
- * @version  V1.3
- * @date     2021.8.6
+ * @version  V1.4
+ * @date     2022.2.27
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
 *******************************************************************************/
 
 #include "myi2c.h"
 
-#define     SET_SCL(hi2c)       ( hi2c->SCL_Port->BSRR = hi2c->SCL_Bit )
-#define     RESET_SCL(hi2c)     ( hi2c->SCL_Port->BRR  = hi2c->SCL_Bit )
-#define     SET_SDA(hi2c)       ( hi2c->SDA_Port->BSRR = hi2c->SDA_Bit )
-#define     RESET_SDA(hi2c)     ( hi2c->SDA_Port->BRR  = hi2c->SDA_Bit )
-#define     GET_SDA(hi2c)       ( hi2c->SDA_Port->IDR  & hi2c->SDA_Bit )
-#define     DELAY()             delay(hi2c->Speed)
+#define     SET_SCL(hi2c)       ( hi2c->SCL_port->BSRR = hi2c->SCL_pin )
+#define     RESET_SCL(hi2c)     ( hi2c->SCL_port->BRR  = hi2c->SCL_pin )
+#define     SET_SDA(hi2c)       ( hi2c->SDA_port->BSRR = hi2c->SDA_pin )
+#define     RESET_SDA(hi2c)     ( hi2c->SDA_port->BRR  = hi2c->SDA_pin )
+#define     GET_SDA(hi2c)       ( hi2c->SDA_port->IDR  & hi2c->SDA_pin )
+#define     DELAY()             delay(hi2c->speed)
 
 static void delay(uint16_t x)
 {
@@ -22,7 +22,7 @@ static void delay(uint16_t x)
 	while(t--);
 }
 
-void MyI2C_Start(MyI2C *hi2c)
+void myi2c_start(myi2c *hi2c)
 {
     // set SDA output
 	SET_SDA(hi2c);
@@ -35,7 +35,7 @@ void MyI2C_Start(MyI2C *hi2c)
 	RESET_SCL(hi2c);
 	DELAY();
 }
-uint8_t MyI2C_Transmit(MyI2C *hi2c,uint8_t dat)
+uint8_t myi2c_transmit(myi2c *hi2c,uint8_t dat)
 {
 	uint8_t index,flag = 0;
     // set SDA output
@@ -64,7 +64,7 @@ uint8_t MyI2C_Transmit(MyI2C *hi2c,uint8_t dat)
 	DELAY();
 	return flag;
 }
-uint8_t MyI2C_Receive(MyI2C *hi2c,uint8_t ack)
+uint8_t myi2c_receive(myi2c *hi2c,uint8_t ack)
 {
 	uint8_t index,dat = 0x00;
     // set SDA input
@@ -94,7 +94,7 @@ uint8_t MyI2C_Receive(MyI2C *hi2c,uint8_t ack)
     SET_SDA(hi2c);
 	return dat;
 }
-void MyI2C_End(MyI2C *hi2c)
+void myi2c_end(myi2c *hi2c)
 {
     // set SDA output
 	RESET_SDA(hi2c);
@@ -108,176 +108,104 @@ void MyI2C_End(MyI2C *hi2c)
 }
 
 
-
-
-uint8_t MyI2C_WriteReg(MyI2C *hi2c,uint8_t RegAddr,uint8_t dat)
-{
-	uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,RegAddr);
-	flag &= MyI2C_Transmit(hi2c,dat);
-	MyI2C_End(hi2c);
-	return flag;
-}
-
-uint8_t MyI2C_ReadReg(MyI2C *hi2c,uint8_t RegAddr)
-{
-	uint8_t  flag = 1,dat;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,RegAddr);
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)|0x01);
-	dat = MyI2C_Receive(hi2c,0);
-	MyI2C_End(hi2c);
-	return dat;
-}
-
-uint8_t	MyI2C_WriteReg2 (MyI2C *hi2c,uint8_t RegAddr,uint16_t dat)
+uint8_t myi2c_write_byte ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t dat )
 {
     uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,RegAddr);
-	flag &= MyI2C_Transmit(hi2c,(uint8_t)(dat>>8));
-    flag &= MyI2C_Transmit(hi2c,(uint8_t)(dat));
-	MyI2C_End(hi2c);
+    
+	myi2c_start(hi2c);
+    
+	flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) & 0xFE);
+    
+    if( addr == 2 )
+        flag &= myi2c_transmit(hi2c,(uint8_t)(addr>>8));
+    flag &= myi2c_transmit(hi2c,(uint8_t)(addr));
+	
+    flag &= myi2c_transmit(hi2c,dat);
+    
+	myi2c_end(hi2c);
+    
 	return flag;
 }
 
-uint16_t MyI2C_ReadReg2 (MyI2C *hi2c,uint8_t RegAddr)
+uint8_t myi2c_write_bytes ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, const uint8_t * dat, uint32_t len )
 {
     uint8_t flag = 1;
-    uint16_t dat;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,RegAddr);
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)|0x01);
-	dat = MyI2C_Receive(hi2c,1);
-    dat <<= 8;
-    dat |= MyI2C_Receive(hi2c,0);
-	MyI2C_End(hi2c);
-	return dat;
-}
-
-
-uint8_t MyI2C_WriteMem(MyI2C *hi2c,uint8_t MemAddr,uint8_t *dat,uint16_t len)
-{
-	uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,MemAddr);
-	while(len--)
-		flag &= MyI2C_Transmit(hi2c,*dat++);
-	MyI2C_End(hi2c);
+    uint32_t i;
+    
+	myi2c_start(hi2c);
+    
+	flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) & 0xFE);
+    
+    if( addr_len == 2 )
+        flag &= myi2c_transmit(hi2c,(uint8_t)(addr>>8));
+    flag &= myi2c_transmit(hi2c,(uint8_t)(addr));
+	
+    for( i = 0; i < len; i++ )
+        flag &= myi2c_transmit(hi2c,dat[i]);
+    
+	myi2c_end(hi2c);
+    
 	return flag;
 }
 
-uint8_t MyI2C_ReadMem(MyI2C *hi2c,uint8_t MemAddr,uint8_t *dat,uint16_t len)
-{
-	uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,MemAddr);
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)|0x01);
-	while(--len>0)
-		*dat++ = MyI2C_Receive(hi2c,1);
-	*dat = MyI2C_Receive(hi2c,0);
-	MyI2C_End(hi2c);
-	return flag;
-}
-
-uint8_t MyI2C_WriteMem2(MyI2C *hi2c,uint16_t MemAddr,uint8_t *dat,uint16_t len)
-{
-	uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,(uint8_t)(MemAddr>>8));
-	flag &= MyI2C_Transmit(hi2c,(uint8_t) MemAddr);
-	while(len--)
-		flag &= MyI2C_Transmit(hi2c,*dat++);
-	MyI2C_End(hi2c);
-	return flag;
-}
-
-uint8_t MyI2C_ReadMem2(MyI2C *hi2c,uint16_t MemAddr,uint8_t *dat,uint16_t len)
-{
-	uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,(uint8_t)(MemAddr>>8));
-	flag &= MyI2C_Transmit(hi2c,(uint8_t) MemAddr);
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)|0x01);
-	while(--len>0)
-		*dat++ = MyI2C_Receive(hi2c,1);
-	*dat = MyI2C_Receive(hi2c,0);
-	MyI2C_End(hi2c);
-	return flag;
-}
-
-
-uint8_t	MyI2C_WriteByte(MyI2C *hi2c,uint8_t dat)
+uint8_t myi2c_read_byte ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat )
 {
     uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	flag &= MyI2C_Transmit(hi2c,dat);
-	MyI2C_End(hi2c);
+    
+	myi2c_start(hi2c);
+    
+	flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) & 0xFE);
+    
+    if( addr_len == 2 )
+        flag &= myi2c_transmit(hi2c,(uint8_t)(addr>>8));
+    flag &= myi2c_transmit(hi2c,(uint8_t)(addr));
+    
+    flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) | 0x01);
+	
+    *dat = myi2c_receive( hi2c, 0 );
+    
+	myi2c_end(hi2c);
+    
 	return flag;
 }
 
-uint8_t	MyI2C_ReadByte(MyI2C *hi2c)
+uint8_t myi2c_read_bytes ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat, uint32_t len )
 {
-    uint8_t dat;
-	MyI2C_Start(hi2c);
-	MyI2C_Transmit(hi2c,(hi2c->DevAddr)|0x01);
-	dat = MyI2C_Receive(hi2c,0);
-	MyI2C_End(hi2c);
-	return dat;
-}
-
-uint8_t MyI2C_WriteBytes(MyI2C *hi2c,uint8_t *dat,uint16_t len)
-{
-	uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)&0xFE);
-	while(len--)
-		flag &= MyI2C_Transmit(hi2c,*dat++);
-	MyI2C_End(hi2c);
-	return flag;
-}
-
-uint8_t MyI2C_ReadBytes(MyI2C *hi2c,uint8_t *dat,uint16_t len)
-{
-	uint8_t flag = 1;
-	MyI2C_Start(hi2c);
-	flag &= MyI2C_Transmit(hi2c,(hi2c->DevAddr)|0x01);
-	while(--len > 0)
-		*dat++ = MyI2C_Receive(hi2c,1);
-	*dat = MyI2C_Receive(hi2c,0);
-	MyI2C_End(hi2c);
+    uint8_t flag = 1;
+    uint32_t i;
+    
+	myi2c_start(hi2c);
+    
+	flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) & 0xFE);
+    
+    if( addr_len == 2 )
+        flag &= myi2c_transmit(hi2c,(uint8_t)(addr>>8));
+    flag &= myi2c_transmit(hi2c,(uint8_t)(addr));
+    
+    flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) | 0x01);
+	
+    for( i = 0; i < len - 1; i++ )
+        dat[i] = myi2c_receive( hi2c, 1 );
+    dat[i] = myi2c_receive( hi2c, 0 );
+    
+	myi2c_end(hi2c);
+    
 	return flag;
 }
 
 
-uint8_t MyI2C_Detect(MyI2C *hi2c)
+uint8_t myi2c_detect ( myi2c * hi2c )
 {
-	uint8_t DevAddr,isFind;
-    isFind = 0;
-    DevAddr = 0x00;
-	for(uint8_t i = 0;i < 128; i++,DevAddr += 0x02)
+	uint8_t i,find = 0;
+	for( i = 0; i <= 0x7F; i++ )
 	{	
-		MyI2C_Start(hi2c);
-		isFind = MyI2C_Transmit(hi2c,DevAddr);
-		MyI2C_End(hi2c);
-        if(isFind)
+		myi2c_start(hi2c);
+		find = myi2c_transmit(hi2c,i);
+		myi2c_end(hi2c);
+        if(find)
         {
-            hi2c->DevAddr = DevAddr;
-            return isFind;
+            hi2c->slaver_addr = i;
+            return 1;
         }
 	}
 	return 0;

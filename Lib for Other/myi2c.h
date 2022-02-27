@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @file     myi2c.h
  * @brief    simulation i2c interface
- * @version  V1.3
- * @date     2021.8.6
+ * @version  V1.4
+ * @date     2022.2.27
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
 *******************************************************************************/
@@ -23,14 +23,14 @@ TIPS:
 		
 EXAMPLE CODE:
 
-    static MyI2C i2c1 = {
-        .SCL_Port = GPIOB,.SCL_Bit = GPIO_PIN_10,
-        .SDA_Port = GPIOB,.SDA_Bit = GPIO_PIN_0,
+    static myi2c i2c1 = {
+        .SCL_port = GPIOx,.SCL_pin = GPIO_PIN_x,
+        .SDA_port = GPIOx,.SDA_pin = GPIO_PIN_x,
         .Speed = 1 ,.DevAddr = 0x00
     };
     
-	if( MyI2C_Detect(&i2c1) && i2c1.DevAddr != 0 )
-        myprintf("Detect: 0x%X\r\n",i2c1.DevAddr);
+	if( myi2c_detect(&i2c1) )
+        myprintf("Detect: 0x%X\r\n",i2c1.slaver_addr);
     else
         myprintf("Detect fail\r\n");
     
@@ -44,35 +44,26 @@ extern "c" {
 #include "stm32f1xx.h"
 
 typedef struct{
-    GPIO_TypeDef* SCL_Port;
-    uint32_t      SCL_Bit;
-    GPIO_TypeDef* SDA_Port;
-    uint32_t      SDA_Bit;
-    uint16_t      Speed;
-    uint8_t       DevAddr;
-}MyI2C;
+    GPIO_TypeDef* SCL_port;
+    uint32_t      SCL_pin;
+    GPIO_TypeDef* SDA_port;
+    uint32_t      SDA_pin;
+    uint16_t      speed;
+    uint8_t       slaver_addr; // 7 bits
+}myi2c;
 
+                                          
+void	    myi2c_start         ( myi2c * hi2c );
+uint8_t	    myi2c_transmit      ( myi2c * hi2c, uint8_t dat );
+uint8_t	    myi2c_receive       ( myi2c * hi2c, uint8_t ack );
+void	    myi2c_end           ( myi2c * hi2c );
 
-void	    MyI2C_Start         (MyI2C *hi2c);
-uint8_t	    MyI2C_Transmit      (MyI2C *hi2c,uint8_t dat);
-uint8_t	    MyI2C_Receive       (MyI2C *hi2c,uint8_t ack);
-void	    MyI2C_End           (MyI2C *hi2c);
+uint8_t	    myi2c_write_byte   ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t dat );
+uint8_t	    myi2c_write_bytes  ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, const uint8_t * dat, uint32_t len );
+uint8_t	    myi2c_read_byte    ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat );
+uint8_t	    myi2c_read_bytes   ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat, uint32_t len );
 
-uint8_t	    MyI2C_WriteReg      (MyI2C *hi2c,uint8_t RegAddr,uint8_t dat);
-uint8_t	    MyI2C_ReadReg       (MyI2C *hi2c,uint8_t RegAddr);
-uint8_t	    MyI2C_WriteReg2     (MyI2C *hi2c,uint8_t RegAddr,uint16_t dat);
-uint16_t    MyI2C_ReadReg2      (MyI2C *hi2c,uint8_t RegAddr);
-
-uint8_t	    MyI2C_WriteMem      (MyI2C *hi2c,uint8_t MemAddr,uint8_t *dat,uint16_t len);
-uint8_t	    MyI2C_ReadMem       (MyI2C *hi2c,uint8_t MemAddr,uint8_t *dat,uint16_t len);
-uint8_t	    MyI2C_WriteMem2     (MyI2C *hi2c,uint16_t MemAddr,uint8_t *dat,uint16_t len);
-uint8_t	    MyI2C_ReadMem2      (MyI2C *hi2c,uint16_t MemAddr,uint8_t *dat,uint16_t len);
-uint8_t	    MyI2C_WriteByte     (MyI2C *hi2c,uint8_t dat);
-uint8_t	    MyI2C_ReadByte      (MyI2C *hi2c);
-uint8_t	    MyI2C_WriteBytes    (MyI2C *hi2c,uint8_t *dat,uint16_t len);
-uint8_t	    MyI2C_ReadBytes     (MyI2C *hi2c,uint8_t *dat,uint16_t len);
-
-uint8_t	    MyI2C_Detect        (MyI2C *hi2c);
+uint8_t	    myi2c_detect        ( myi2c * hi2c );
 
 #ifdef __cplusplus
 }

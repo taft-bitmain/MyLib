@@ -9,184 +9,236 @@
 
 #include "myspi.h"
 
-#define     SET_SCK(hspi)       ( hspi->SCK_Port->BSRR  = hspi->SCK_Bit  )
-#define     RESET_SCK(hspi)     ( hspi->SCK_Port->BRR   = hspi->SCK_Bit  )
-#define     SET_CS(hspi)        ( hspi->CS_Port->BSRR   = hspi->CS_Bit   )
-#define     RESET_CS(hspi)      ( hspi->CS_Port->BRR    = hspi->CS_Bit   )
-#define     SET_MOSI(hspi)      ( hspi->MOSI_Port->BSRR = hspi->MOSI_Bit )
-#define     RESET_MOSI(hspi)    ( hspi->MOSI_Port->BRR  = hspi->MOSI_Bit )
-#define     GET_MISO(hspi)      ( hspi->MISO_Port->IDR  & hspi->MISO_Bit )
-#define     DELAY()             delay(hspi->Speed)
+#define     SET_SCK(hspi)       ( hspi->SCK_port->BSRR  = hspi->SCK_pin  )
+#define     RESET_SCK(hspi)     ( hspi->SCK_port->BRR   = hspi->SCK_pin  )
+#define     SET_CS(hspi)        ( hspi->CS_port->BSRR   = hspi->CS_pin   )
+#define     RESET_CS(hspi)      ( hspi->CS_port->BRR    = hspi->CS_pin   )
+#define     SET_MOSI(hspi)      ( hspi->MOSI_port->BSRR = hspi->MOSI_pin )
+#define     RESET_MOSI(hspi)    ( hspi->MOSI_port->BRR  = hspi->MOSI_pin )
+#define     GET_MISO(hspi)      ( hspi->MISO_port->IDR  & hspi->MISO_pin )
 
 
-static void delay(uint16_t x)
+static inline void delay( void )
 {
-	uint16_t t = x * 8;
-	while(t--);
+	__NOP();__NOP();
 }
 
-void MySPI_IO_Init(MySPI *hspi)
+
+inline void MySPI_IO_Init( myspi * hspi )
 {
-    SET_CS(hspi);
+    // TODO : configurate pin(CS/SCK/MOSI/MISO)
+    
+    SET_CS( hspi );
     (hspi->CPOL) ?  SET_SCK(hspi) :RESET_SCK(hspi);
 }
 
-void MySPI_TransmitByte(MySPI *hspi,uint8_t dat)
+inline void myspi_transceive_start( myspi * hspi )
+{
+    (hspi->CPOL) ?  SET_SCK(hspi) : RESET_SCK(hspi);
+    RESET_CS( hspi );
+}
+
+void myspi_transmit_byte( myspi * hspi, uint8_t dat )
 {
     uint8_t i;
 	for(i = 0; i < 8; i++)
 	{
 		if( !(hspi->CPHA) )
         {
-            if(dat & (0x80 >> i))
+            if( dat & 0x80 )
                 SET_MOSI(hspi);
             else
                 RESET_MOSI(hspi);
         }
+        
 		(hspi->CPOL) ?  RESET_SCK(hspi) :SET_SCK(hspi);
-		DELAY();
+        
+		delay();
+        
 		if( hspi->CPHA )
         {
-            if(dat & (0x80 >> i))
+            if(dat & 0x80)
                 SET_MOSI(hspi);
             else
                 RESET_MOSI(hspi);
         }
+        
 		(hspi->CPOL) ?  SET_SCK(hspi) :RESET_SCK(hspi);
-		DELAY();
-	}
-}
-
-uint8_t MySPI_ReceiveByte(MySPI *hspi)
-{
-    uint8_t i,dat_rcv;
-	for(i = 0; i < 8; i++)
-	{
-        (hspi->CPOL) ?  RESET_SCK(hspi) :SET_SCK(hspi);
-        DELAY();
-        dat_rcv <<= 1;
-        if(!(hspi->CPHA))
-            dat_rcv |= (GET_MISO(hspi) ? 1 : 0);
-        (hspi->CPOL) ?  SET_SCK(hspi) :RESET_SCK(hspi);
-        DELAY();
-        if(hspi->CPHA)
-            dat_rcv |= (GET_MISO(hspi) ? 1 : 0);
-	}
-    return dat_rcv;
-}
-
-uint8_t MySPI_TransmitReceiveByte(MySPI *hspi,uint8_t dat)
-{
-    uint8_t i,dat_rcv;
-	for(i = 0; i < 8; i++)
-	{
-		if( !(hspi->CPHA) )
-        {
-            if(dat & (0x80 >> i))
-                SET_MOSI(hspi);
-            else
-                RESET_MOSI(hspi);
-        }
-		(hspi->CPOL) ?  RESET_SCK(hspi) :SET_SCK(hspi);
-		DELAY();
+        
         dat <<= 1;
+        
+		delay();
+	}
+}
+
+uint8_t myspi_receive_byte(myspi *hspi)
+{
+    uint8_t i,dat_rcv;
+	for(i = 0; i < 8; i++)
+	{
+        dat_rcv <<= 1;
+        
+        (hspi->CPOL) ?  RESET_SCK(hspi) :SET_SCK(hspi);
+        
+        delay();
+        
         if(!(hspi->CPHA))
-            dat |= (GET_MISO(hspi) ? 1 : 0);
-		if( hspi->CPHA )
-        {
-            if(dat & (0x80 >> i))
-                SET_MOSI(hspi);
-            else
-                RESET_MOSI(hspi);
-        }
-		(hspi->CPOL) ?  SET_SCK(hspi) :RESET_SCK(hspi);
-		DELAY();
+            dat_rcv |= (GET_MISO(hspi) ? 1 : 0);
+        
+        (hspi->CPOL) ?  SET_SCK(hspi) :RESET_SCK(hspi);
+        
+        delay();
+        
         if(hspi->CPHA)
-            dat |= (GET_MISO(hspi) ? 1 : 0);
+            dat_rcv |= (GET_MISO(hspi) ? 1 : 0);
 	}
     return dat_rcv;
 }
 
-void MySPI_WriteReg(MySPI *hspi,uint8_t RegAddr,uint8_t dat)
+uint8_t myspi_transceive_byte(myspi *hspi,uint8_t dat)
 {
-	RESET_CS(hspi);
-	DELAY();
-	MySPI_TransmitByte(hspi,RegAddr);
-    MySPI_TransmitByte(hspi,dat);
-	SET_CS(hspi);
-	DELAY();
+    uint8_t i,dat_rcv;
+	for(i = 0; i < 8; i++)
+	{
+		dat_rcv <<= 1;
+        
+        if( !(hspi->CPHA) )
+        {
+            if(dat & 0x80)
+                SET_MOSI(hspi);
+            else
+                RESET_MOSI(hspi);
+        }
+        
+		(hspi->CPOL) ?  RESET_SCK(hspi) :SET_SCK(hspi);
+        
+		delay();
+                
+        if(!(hspi->CPHA))
+            dat_rcv |= (GET_MISO(hspi) ? 1 : 0);
+        
+		if( hspi->CPHA )
+        {
+            if(dat & 0x80 )
+                SET_MOSI(hspi);
+            else
+                RESET_MOSI(hspi);
+        }
+        
+		(hspi->CPOL) ?  SET_SCK(hspi) :RESET_SCK(hspi);
+        
+		delay();
+                
+        if(hspi->CPHA)
+            dat_rcv |= (GET_MISO(hspi) ? 1 : 0);
+        
+        dat <<= 1;
+	}
+    return dat_rcv;
 }
-uint8_t MySPI_ReadReg(MySPI *hspi,uint8_t RegAddr)
+
+inline void myspi_transceive_end(myspi *hspi)
+{
+    SET_CS(hspi);
+}
+
+void myspi_write_reg(myspi *hspi,uint8_t RegAddr,uint8_t dat)
+{
+	myspi_transceive_start(hspi);
+	delay();
+    
+	myspi_transmit_byte(hspi,RegAddr);
+    
+    myspi_transmit_byte(hspi,dat);
+    
+	myspi_transceive_end(hspi);
+	delay();
+}
+uint8_t myspi_read_reg(myspi *hspi,uint8_t RegAddr)
 {
 	uint8_t dat;
-	RESET_CS(hspi);
-	DELAY();
-	MySPI_TransmitByte(hspi,RegAddr);
-	dat = MySPI_ReceiveByte(hspi);
-	SET_CS(hspi);
-	DELAY();
+    
+	myspi_transceive_start(hspi);
+	delay();
+    
+	myspi_transmit_byte(hspi,RegAddr);
+	dat = myspi_receive_byte(hspi);
+    
+	myspi_transceive_end(hspi);
+	delay();
+    
 	return dat;
 }
-void MySPI_WriteMem(MySPI *hspi,uint8_t RegAddr,uint8_t *dat,uint16_t len)
+void myspi_write_mem(myspi *hspi,uint8_t RegAddr,uint8_t *dat,uint16_t len)
 {
-	RESET_CS(hspi);
-	DELAY();
-	MySPI_TransmitByte(hspi,RegAddr);
+	myspi_transceive_start(hspi);
+	delay();
+    
+	myspi_transmit_byte(hspi,RegAddr);
 	while(len--)
 	{
-		MySPI_TransmitByte(hspi,*dat);
+		myspi_transmit_byte(hspi,*dat);
 		dat++;
 	}
-	SET_CS(hspi);
-	DELAY();
+    
+	myspi_transceive_end(hspi);
+	delay();
 }
-void MySPI_ReadMem(MySPI *hspi,uint8_t RegAddr,uint8_t *dat,uint16_t len)
+void myspi_read_mem(myspi *hspi,uint8_t RegAddr,uint8_t *dat,uint16_t len)
 {
-	RESET_CS(hspi);
-	DELAY();
-	MySPI_TransmitByte(hspi,RegAddr);
+	myspi_transceive_start(hspi);
+	delay();
+    
+	myspi_transmit_byte(hspi,RegAddr);
 	
 	while(len--)
 	{
-		*dat = MySPI_ReceiveByte(hspi);
+		*dat = myspi_receive_byte(hspi);
 		dat++;
 	}
-	SET_CS(hspi);
-	DELAY();
+    
+	myspi_transceive_end(hspi);
+	delay();
 }
-void MySPI_Write(MySPI *hspi,uint8_t *dat,uint16_t len)
+void myspi_write(myspi *hspi,uint8_t *dat,uint16_t len)
 {
-	RESET_CS(hspi);
-	DELAY();
+	myspi_transceive_start(hspi);
+	delay();
+    
 	while(len--)
 	{
-		MySPI_TransmitByte(hspi,*dat);
+		myspi_transmit_byte(hspi,*dat);
 		dat++;
 	}
-	SET_CS(hspi);
-	DELAY();
+    
+	myspi_transceive_end(hspi);
+	delay();
 }
-void MySPI_Read(MySPI *hspi,uint8_t *dat,uint16_t len)
+void myspi_read(myspi *hspi,uint8_t *dat,uint16_t len)
 {
-	RESET_CS(hspi);
-	DELAY();
+	myspi_transceive_start(hspi);
+	delay();
+    
 	while(len--)
 	{
-		*dat = MySPI_ReceiveByte(hspi);
+		*dat = myspi_receive_byte(hspi);
 		dat++;
 	}
-	SET_CS(hspi);
-	DELAY();
+    
+	myspi_transceive_end(hspi);
+	delay();
 }
-void MySPI_ReadWrite(MySPI *hspi,uint8_t *dat_in,uint8_t *dat_out,uint16_t len)
+void myspi_write_read(myspi *hspi,uint8_t *dat_in,uint8_t *dat_out,uint16_t len)
 {
-	RESET_CS(hspi);
-	DELAY();
+	myspi_transceive_start(hspi);
+	delay();
+    
 	while(len--)
 	{
-		*dat_out = MySPI_TransmitReceiveByte(hspi,*dat_in);
+		*dat_out = myspi_transceive_byte(hspi,*dat_in);
 		dat_in++;dat_out++;
 	}
-	SET_CS(hspi);
-	DELAY();
+    
+	myspi_transceive_end(hspi);
+	delay();
 }

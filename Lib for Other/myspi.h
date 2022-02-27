@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @file     myspi.h
  * @brief    simulation spi interface
- * @version  V1.1
- * @date     2021.8.6
+ * @version  V1.2
+ * @date     2022.2.27
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
 *******************************************************************************/
@@ -10,53 +10,56 @@
 TIPS:
 
 EXAMPLE CODE:
-	MySPI hspi = {
-    .SCK_Port  = GPIOE, .SCK_Bit  = GPIO_PIN_11,
-    .CS_Port   = GPIOE, .CS_Bit   = GPIO_PIN_10,
-    .MOSI_Port = GPIOE, .MOSI_Bit = GPIO_PIN_12,
-    .MISO_Port = NULL,  .MISO_Bit = 0,
-    .Speed = 2, .CPOL = 0, .CPHA = 0
-};
-    MySPI_IO_Init(&hspi);
-    MySPI_WriteReg(&hspi,0x12,0x34);
-	
+	myspi hspi = {
+        .SCK_port  = GPIOx, .SCK_pin  = GPIO_PIN_x,
+        .CS_port   = GPIOx, .CS_pin   = GPIO_PIN_x,
+        .MOSI_port = GPIOx, .MOSI_pin = GPIO_PIN_x,
+        .MISO_port = NULL,  .MISO_pin = 0,
+        .CPOL = 0, .CPHA = 0
+    };
+    myspi_io_init(&hspi);
+    myspi_write_reg(&hspi,0x12,0x34);
+
 *******************************************************************************/
 #ifndef __MYSPI_H
 #define __MYSPI_H
 #ifdef __cplusplus
-extern "c" {
+extern "c"
+{
 #endif
 
+
+#include "stdint.h"
 #include "stm32f1xx.h"
 
 typedef struct{
-	GPIO_TypeDef*   SCK_Port;
-	uint32_t		SCK_Bit;
-	GPIO_TypeDef*	CS_Port;
-	uint32_t		CS_Bit;
-	GPIO_TypeDef*	MOSI_Port;
-	uint32_t		MOSI_Bit;
-	GPIO_TypeDef*	MISO_Port;
-	uint32_t		MISO_Bit;
-	uint16_t	    Speed;
-	uint8_t			CPOL;
-	uint8_t			CPHA;
-}MySPI;
+    GPIO_TypeDef*   SCK_port;
+    uint32_t		SCK_pin;
+    GPIO_TypeDef*	CS_port;
+    uint32_t		CS_pin;
+    GPIO_TypeDef*	MOSI_port;
+    uint32_t		MOSI_pin;
+    GPIO_TypeDef*	MISO_port;
+    uint32_t		MISO_pin;
+    uint8_t			CPOL;
+    uint8_t			CPHA;
+} myspi;
 
+void        myspi_io_init               ( myspi * hspi );
 
-void        MySPI_IO_Init               (MySPI *hspi);
-void        MySPI_TransmitByte          (MySPI *hspi,uint8_t dat);
-uint8_t     MySPI_ReceiveByte           (MySPI *hspi);
-uint8_t     MySPI_TransmitReceiveByte   (MySPI *hspi,uint8_t dat);
+void        myspi_transceive_start      ( myspi * hspi );
+void        myspi_transmit_byte         ( myspi * hspi, uint8_t dat );
+uint8_t     myspi_receive_byte          ( myspi * hspi );
+uint8_t     myspi_transceive_byte       ( myspi * hspi, uint8_t dat );
+void        myspi_transceive_end        ( myspi * hspi );
 
-
-void        MySPI_WriteReg		        (MySPI *hspi,uint8_t RegAddr,uint8_t dat);
-uint8_t     MySPI_ReadReg               (MySPI *hspi,uint8_t RegAddr);
-void        MySPI_WriteMem		        (MySPI *hspi,uint8_t RegAddr,uint8_t *dat,uint16_t len);
-void        MySPI_ReadMem		        (MySPI *hspi,uint8_t RegAddr,uint8_t *dat,uint16_t len);
-void        MySPI_Write		            (MySPI *hspi,uint8_t *dat,uint16_t len);
-void        MySPI_Read			        (MySPI *hspi,uint8_t *dat,uint16_t len);
-void        MySPI_ReadWrite             (MySPI *hspi,uint8_t *dat_in,uint8_t *dat_out,uint16_t len);
+void        myspi_write_reg		        ( myspi * hspi, uint8_t addr, uint8_t dat);
+uint8_t     myspi_read_reg              ( myspi * hspi, uint8_t addr );
+void        myspi_write_mem		        ( myspi * hspi, uint8_t addr, uint8_t * dat, uint16_t len);
+void        myspi_read_mem		        ( myspi * hspi, uint8_t addr, uint8_t * dat, uint16_t len);
+void        myspi_write		            ( myspi * hspi, uint8_t * dat, uint16_t len);
+void        myspi_read			        ( myspi * hspi, uint8_t * dat, uint16_t len);
+void        myspi_write_read            ( myspi * hspi, uint8_t * dat_in,uint8_t * dat_out, uint16_t len);
 
 
 #ifdef __cplusplus

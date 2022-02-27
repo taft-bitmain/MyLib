@@ -60,15 +60,15 @@ void        myspi_transceive_end    ( myspi * hspi );
 /******************* Main Functions **************************/
 
 void        myspi_write_byte        ( myspi * hspi, uint8_t addr, uint8_t dat);
-void        myspi_write_bytes       ( myspi * hspi, uint8_t addr, const uint8_t * dat, uint16_t len );
+void        myspi_write_bytes       ( myspi * hspi, uint8_t addr, const uint8_t * dat, uint32_t len );
 uint8_t     myspi_read_byte         ( myspi * hspi, uint8_t addr );
-void        myspi_read_bytes        ( myspi * hspi, uint8_t addr, uint8_t * dat, uint16_t len );
+void        myspi_read_bytes        ( myspi * hspi, uint8_t addr, uint8_t * dat, uint32_t len );
 
 /******************* Extend Functions **************************/
 
-void        myspi_write             ( myspi * hspi, uint8_t * dat, uint16_t len );
-void        myspi_read              ( myspi * hspi, uint8_t * dat, uint16_t len );
-void        myspi_write_read        ( myspi * hspi, uint8_t * dat_in,uint8_t * dat_out, uint16_t len);
+void        myspi_write             ( myspi * hspi, uint8_t * dat, uint32_t len );
+void        myspi_read              ( myspi * hspi, uint8_t * dat, uint32_t len );
+void        myspi_write_read        ( myspi * hspi, uint8_t * dat_in,uint8_t * dat_out, uint32_t len);
 
 
 #ifdef __cplusplus

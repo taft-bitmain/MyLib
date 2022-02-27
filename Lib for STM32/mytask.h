@@ -13,9 +13,10 @@
 extern "c" {
 #endif
 
+#include "stdint.h"
 
-void setup(void);
-void loop(void);
+void    setup  ( void );
+void    loop   ( void );
 
 
 

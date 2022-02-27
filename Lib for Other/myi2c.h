@@ -8,11 +8,7 @@
 *******************************************************************************/
 /*******************************************************************************
 TIPS:
-    1. Using the STM32CubeMX to config pin (SCL and SDA) as
-        output level            : High
-        mode                    : Output Open Drain
-        Pull-up/Poll-down       : Pull-up
-        Maximum output speed    : Low or Medium
+    1. Enable GPIO Clock
         
     2. Speed parameter dexcription:
         when the SYSCLK is 48MHz,
@@ -52,16 +48,25 @@ typedef struct{
     uint8_t       slaver_addr; // 7 bits
 }myi2c;
 
+/******************* Basic Functions **************************/
+
+void	    myi2c_delay         ( uint32_t x );
+
+void	    myi2c_io_init       ( myi2c * hi2c );
                                           
 void	    myi2c_start         ( myi2c * hi2c );
 uint8_t	    myi2c_transmit      ( myi2c * hi2c, uint8_t dat );
 uint8_t	    myi2c_receive       ( myi2c * hi2c, uint8_t ack );
 void	    myi2c_end           ( myi2c * hi2c );
 
+/******************* Main Functions **************************/
+
 uint8_t	    myi2c_write_byte   ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t dat );
 uint8_t	    myi2c_write_bytes  ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, const uint8_t * dat, uint32_t len );
 uint8_t	    myi2c_read_byte    ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat );
 uint8_t	    myi2c_read_bytes   ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat, uint32_t len );
+
+/******************* Extend Functions **************************/
 
 uint8_t	    myi2c_detect        ( myi2c * hi2c );
 

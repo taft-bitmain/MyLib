@@ -9,17 +9,48 @@
 
 #include "myi2c.h"
 
+/******************* IO Operation **************************/
+
 #define     SET_SCL(hi2c)       ( hi2c->SCL_port->BSRR = hi2c->SCL_pin )
 #define     RESET_SCL(hi2c)     ( hi2c->SCL_port->BRR  = hi2c->SCL_pin )
 #define     SET_SDA(hi2c)       ( hi2c->SDA_port->BSRR = hi2c->SDA_pin )
 #define     RESET_SDA(hi2c)     ( hi2c->SDA_port->BRR  = hi2c->SDA_pin )
 #define     GET_SDA(hi2c)       ( hi2c->SDA_port->IDR  & hi2c->SDA_pin )
-#define     DELAY()             delay(hi2c->speed)
 
-static void delay(uint16_t x)
+#define     DELAY()             myi2c_delay(hi2c->speed)
+
+/******************* Basic Functions **************************/
+
+void myi2c_delay ( uint32_t x )
 {
-	uint16_t t = x * 8;
+	uint32_t t = x * 8;
 	while(t--);
+}
+
+void myi2c_io_init ( myi2c * hi2c )
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    /* GPIO Ports Clock Enable */
+    //__HAL_RCC_GPIOx_CLK_ENABLE();
+    
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(hi2c->SCL_port, hi2c->SCL_pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(hi2c->SDA_port, hi2c->SDA_pin, GPIO_PIN_SET);
+
+    /*Configure GPIO pins : SCL */
+    GPIO_InitStruct.Pin = hi2c->SCL_pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(hi2c->SCL_port, &GPIO_InitStruct);
+    
+    /*Configure GPIO pins : SCL */
+    GPIO_InitStruct.Pin = hi2c->SDA_pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(hi2c->SDA_port, &GPIO_InitStruct);
 }
 
 void myi2c_start(myi2c *hi2c)
@@ -107,6 +138,7 @@ void myi2c_end(myi2c *hi2c)
 	DELAY();
 }
 
+/******************* Main Functions **************************/
 
 uint8_t myi2c_write_byte ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t dat )
 {
@@ -193,6 +225,7 @@ uint8_t myi2c_read_bytes ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_
 	return flag;
 }
 
+/******************* Extend Functions **************************/
 
 uint8_t myi2c_detect ( myi2c * hi2c )
 {

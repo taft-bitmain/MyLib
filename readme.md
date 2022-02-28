@@ -39,6 +39,7 @@
 | mpu6050  | \~.c/\~.h       | 六轴运动传感器                                      | IIC            |
 | nrf24l01 | \~.c/\~.h       | 2.4G无线传输模块                                    | SPI           |
 | SSD1306  | \~.c/\~.h       | 经典OLED驱动，建议搭配mygui库使用                    | IIC/SPI       |
+| st7735   | \~.c/\~.h       | IPS屏幕驱动                                       |  SPI          |
 | mfrc522  | rc522.c/rc522.h | RFID芯片，支持ISO14443A/MIFARE                      | SPI          |
 | rda5820  | \~.c/\~.h       | FM收发芯片                                          | IIC           |
 | W5500    | \~.c/\~.h       | 以太网芯片                                          | SPI           |

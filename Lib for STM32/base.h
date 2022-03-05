@@ -24,23 +24,18 @@ TIPS:
 #define __BASE_H
 
 #ifdef __cplusplus
-extern "c" {
+extern "c"
+{
 #endif
 
-#include "stm32f1xx.h"
-
-
-    /**************** basic functions enable macros ************************/
+/**************** basic functions enable macros ************************/
 
 #define     BASE_IO              		1
-#define     BASE_UART_PRINTF     		0
-#define     BASE_USB_PRINTF     		1
-#define     BASE_UART_DMA_TRANSMIT      0
-#define	   	BASE_UART_DMA_RECEIVE		0
+#define     BASE_UART_PRINTF     		1
+#define     BASE_USB_PRINTF     		0
 
-#if ( BASE_UART_PRINTF == 1 ||  BASE_UART_DMA_TRANSMIT== 1 || BASE_UART_DMA_RECEIVE == 1 )
-#include "usart.h"
-#include "stm32f1xx_hal_uart.h"
+
+#if ( BASE_UART_PRINTF == 1 )
 #define     UART_BUFFER_LEN             256
 #endif
 
@@ -48,23 +43,7 @@ extern "c" {
 #define     USB_BUFFER_LEN              256
 #endif
 
-
-#if (BASE_UART_DMA_TRANSMIT == 1 )
-#define     UART1_DMA_TRANSMIT          0
-#define     UART2_DMA_TRANSMIT          0
-#define     UART3_DMA_TRANSMIT          0
-#define     UART4_DMA_TRANSMIT          0
-#endif
-
-#if (BASE_UART_DMA_RECEIVE == 1)
-#define     UART1_DMA_RECEIVE           0
-#define     UART2_DMA_RECEIVE           0
-#define     UART3_DMA_RECEIVE           0
-#define     UART4_DMA_RECEIVE           0
-#endif
-
-
-    /************************* BASE_IO ****************************/
+/************************* BASE_IO ******************************/
 
 #if (BASE_IO == 1)
 
@@ -79,71 +58,26 @@ extern "c" {
 
 #endif
 
-    /******************** BASE_DEFAULT_PRINTF ****************************/
+/******************** BASE_DEFAULT_PRINTF ************************/
+
 #if     (BASE_USB_PRINTF == 1)
 #define     myprintf                    usb_printf
-#elif (BASE_UART_PRINTF == 1)
+#elif   (BASE_UART_PRINTF == 1)
 #define     myprintf                    uart_printf
 #endif
 
-    /******************** BASE_USB_PRINTF ****************************/
+/******************** BASE_USB_PRINTF ****************************/
+
 #if (BASE_USB_PRINTF == 1)
-    int         usb_printf             (const char * format, ...);
+    int    usb_printf             ( const char * format, ... );
 #endif
-    /******************** BASE_UART_PRINTF ****************************/
+
+/******************** BASE_UART_PRINTF ***************************/
 
 #if (BASE_UART_PRINTF == 1)
-    int         uart_printf            (const char * format, ...);
+    int    uart_printf            ( const char * format, ... );
 #endif
 
-
-
-
-
-    /****************** BASE_UART_DMA_TRANSMIT ************************/
-#if (BASE_UART_DMA_TRANSMIT == 1)
-
-#if (UART1_DMA_TRANSMIT == 1)
-    extern uint8_t UART1_TxBuffer[UART_BUFFER_LEN];
-#endif
-#if (UART2_DMA_TRANSMIT == 1)
-    extern uint8_t UART2_TxBuffer[UART_BUFFER_LEN];
-#endif
-#if (UART3_DMA_TRANSMIT == 1)
-    extern uint8_t UART3_TxBuffer[UART_BUFFER_LEN];
-#endif
-#if (UART4_DMA_TRANSMIT == 1)
-    extern uint8_t UART4_TxBuffer[UART_BUFFER_LEN];
-#endif
-
-    void        UART_DMA_Transmintf (UART_HandleTypeDef *huart,const char * format, ...);
-    void        UART_DMA_Transmint  (UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size);
-#endif
-
-    /***************** BASE_UART_DMA_RECEIVE *************************/
-#if (BASE_UART_DMA_RECEIVE == 1)
-
-#if (UART1_DMA_RECEIVE == 1)
-    extern uint8_t UART1_RxBuffer[UART_BUFFER_LEN];
-    void UART1_IDLE_Callback(uint8_t *data,uint16_t len);
-#endif
-#if (UART2_DMA_RECEIVE == 1)
-    extern uint8_t UART2_RxBuffer[UART_BUFFER_LEN];
-    void UART2_IDLE_Callback(uint8_t *data,uint16_t len);
-#endif
-#if (UART3_DMA_RECEIVE == 1)
-    extern uint8_t UART3_RxBuffer[UART_BUFFER_LEN];
-    void UART3_IDLE_Callback(uint8_t *data,uint16_t len);
-#endif
-#if (UART4_DMA_RECEIVE == 1)
-    extern uint8_t UART4_RxBuffer[UART_BUFFER_LEN];
-    void UART4_IDLE_Callback(uint8_t *data,uint16_t len);
-#endif
-
-    void        UART_IDLE_Init      (void);
-    void        UART_IDLE_Handler   (UART_HandleTypeDef *huart);
-
-#endif
 
 
 #ifdef __cplusplus

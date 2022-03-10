@@ -28,9 +28,9 @@ int uart_printf( const char * format, ... )
     va_end( arg_ptr );
 
 
-    while ( !( __HAL_UART_GET_FLAG( &huart1, UART_FLAG_TC ) ) );
+    while ( !( __HAL_UART_GET_FLAG( &UART_HANDLE, UART_FLAG_TC ) ) );
 
-    HAL_UART_Transmit( &huart1, ( uint8_t * )_dat_printf, nBytes, 1000 );
+    HAL_UART_Transmit( &UART_HANDLE, ( uint8_t * )_dat_printf, nBytes, 1000 );
 
     return nBytes;
 }

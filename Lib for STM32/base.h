@@ -31,11 +31,12 @@ extern "c"
 /**************** basic functions enable macros ************************/
 
 #define     BASE_IO              		1
-#define     BASE_UART_PRINTF     		1
+#define     BASE_UART_PRINTF     		0
 #define     BASE_USB_PRINTF     		0
 
 
 #if ( BASE_UART_PRINTF == 1 )
+#define     UART_HANDLE                 huart1
 #define     UART_BUFFER_LEN             256
 #endif
 

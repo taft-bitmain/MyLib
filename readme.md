@@ -28,7 +28,7 @@
 | ds1302   | \~.c/\~.h       | 实时时钟RTC                                         | 类IIC         |
 | ds1307   | \~.c/\~.h       | 实时时钟RTC                                         | IIC           |
 | eeprom   | \~.c/\~.h       | 存储芯片（24c02，24c32）                             | IIC           |
-| esp8266  | esp.c/esp.h     | WIFI模块，AT指令驱动（物联网的话建议搭配iot库使用）    | UART          |
+| esp8266  | \~.c/\~.h       | WIFI模块，AT指令驱动（物联网的话建议搭配iot库使用）    | UART          |
 | gy30     | \~.c/\~.h       | 数字光强传感器，IIC接口                              | IIC           |
 | hmc472   | \~.c/\~.h       | 数字步进衰减器，                                     | 并行接口      |
 | hmi      | \~.c/\~.h       | HMI串口屏，串口驱动                                  | UART          |

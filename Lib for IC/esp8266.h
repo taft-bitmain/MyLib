@@ -8,7 +8,9 @@
 *******************************************************************************/
 /*******************************************************************************
 TIPS:
-    1. Recv link data when cipmode=1 is not finished, it will receive the packet header
+    1. In STM32CubeMX, you need enable the uart and it's global interrupt and DMA, and
+        enable [Project Menager->Advanced Settings->Register Callback->UART].
+    2. Recv link data when cipmode=1 is not finished, it will receive the packet header
         +IPD<[,id]>,[length]:[payload]
 EXAMPLE CODE:
 

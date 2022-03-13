@@ -10,14 +10,6 @@
 TIPS:
     1. GPIO is using regiter operation for efficiency.
     2. UART is using HAL lib.
-    3. To use BASE_UART_DMA_RECEIVE, you need:
-        - turn on the UART global interrupt ;
-        - config DMA USART_RX ;
-        - put the UART_IDLE_Handler() in UARTx_IRQHandler() funcition, which
-          belong to stm32f1xx_it.c ;
-        - run UART_IDLE_Init() at the begining of your code ;
-        - MCU will call UARTx_IDLE_Callback() if the IDLE interrupt occured,
-          so rewrite your own callback functions as it is __weak type.
 
 *******************************************************************************/
 #ifndef __BASE_H

@@ -1,64 +1,60 @@
 /*******************************************************************************
  * @file     aht10.c
  * @brief    Drive the IC aht10
- * @version  V1.0
- * @date     2022.2.8
+ * @version  V1.1
+ * @date     2022.4.17
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
 ******************************************************************************/
 
 #include "aht10.h"
 
-/***************** Basic Interface *************************/
-
-inline uint8_t AHT10_I2C_Write ( uint8_t * pdatain, uint8_t len )
-{
-    return MyI2C_WriteBytes( &aht10_i2c, pdatain, len );
-}
-
-inline uint8_t AHT10_I2C_Read ( uint8_t * pdataout, uint8_t len )
-{
-    return MyI2C_ReadBytes( &aht10_i2c, pdataout, len );
-}
-
-inline void AHT10_DelayMs ( uint16_t ms )
-{
-    HAL_Delay(ms);
-}
+uint8_t CMD_INIT[3]    = { 0xE1 ,0x08 ,0x00 };
+uint8_t CMD_SWRST[1]   = { 0xBA };
+uint8_t CMD_TRIGGER[3] = { 0xAC ,0x33 ,0x00 };
 
 
 /****************** Main Functions *************************/
 
 uint8_t AHT10_Init ( void )
 {
-    uint8_t cmd[1] = { 0xE1 };
-    AHT10_I2C_Write(cmd,1);
+    uint8_t dat[3] = { 0xE1 ,0x08 ,0x00 };
     
-    // wait for 20 ms at most
-    AHT10_DelayMs(20);
+#ifdef AHT10_I2C_HARDWARE
+
     
-    AHT10_I2C_Read(cmd,1);
+
+#endif
     
-    if( cmd[0] & 0x08 )
-        return 1;
-    else
+#ifdef AHT10_I2C_SOFTWARE
+
+    myi2c_io_init(&aht10_i2c);
+    
+#endif
+    
+    // wait for 20 ms after power on
+    AHT10_DelayMs(40);
+    
+    AHT10_I2C_Read(dat,1);
+    if( dat[0] & 0x08 )
         return 0;
+        
+    AHT10_I2C_Write(CMD_INIT,sizeof(CMD_INIT));
     
+    return 1;
 }
 
 uint8_t AHT10_SoftReset ( void )
 {
-    uint8_t cmd[1] = { 0xBA };
-    return AHT10_I2C_Write(cmd,1);
+    return AHT10_I2C_Write(CMD_SWRST,sizeof(CMD_SWRST));
 }
 
 uint8_t AHT10_Trigger ( void )
 {
-    uint8_t cmd[3] = { 0xAC ,0x33 ,0x00 };
-    return AHT10_I2C_Write(cmd,3);
+    return AHT10_I2C_Write(CMD_TRIGGER,sizeof(CMD_TRIGGER));
 }
 
-uint8_t AHT10_MeasureGet ( uint32_t *RH , uint32_t *Temp )
+uint8_t AHT10_MeasureGetRaw ( uint32_t *RH , uint32_t *Temp )
 {
     uint8_t dat[6];
     AHT10_I2C_Read(dat,6);
@@ -68,5 +64,33 @@ uint8_t AHT10_MeasureGet ( uint32_t *RH , uint32_t *Temp )
     *RH = (dat[1] << 12) | (dat[2] << 4) |( (dat[3]&0xf0) >> 4);
     *Temp = ((dat[3]&0x0f) << 16) | (dat[4] << 8) |(dat[5] );
     return 1;
+}
+
+uint8_t AHT10_MeasureGet ( uint8_t *RH , uint8_t *Temp )
+{
+    uint32_t rh,temp;
+    if ( AHT10_MeasureGetRaw(&rh,&temp) )
+    {
+        *RH = (uint8_t)(rh*100/0xfffff);
+        *Temp = (uint8_t)(temp*200/0xfffff-50);
+        return 1;
+    }
+    *RH = 0;
+    *Temp = 0;
+    return 0;
+}
+
+uint8_t AHT10_MeasureGetf ( float *RH , float *Temp )
+{
+    uint32_t rh,temp;
+    if ( AHT10_MeasureGetRaw(&rh,&temp) )
+    {
+        *RH = (uint8_t)(rh*100.0/0xfffff);
+        *Temp = (uint8_t)(temp*200.0/0xfffff-50);
+        return 1;
+    }
+    *RH = 0;
+    *Temp = 0;
+    return 0;
 }
 

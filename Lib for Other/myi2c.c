@@ -140,6 +140,23 @@ void myi2c_end(myi2c *hi2c)
 
 /******************* Main Functions **************************/
 
+uint8_t myi2c_write ( myi2c * hi2c, const uint8_t * dat, uint32_t len )
+{
+    uint8_t flag = 1;
+    uint32_t i;
+    
+	myi2c_start(hi2c);
+    
+	flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) & 0xFE);
+	
+    for( i = 0; i < len; i++ )
+        flag &= myi2c_transmit(hi2c,dat[i]);
+    
+	myi2c_end(hi2c);
+    
+	return flag;
+}
+
 uint8_t myi2c_write_byte ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t dat )
 {
     uint8_t flag = 1;
@@ -180,6 +197,25 @@ uint8_t myi2c_write_bytes ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, const
 	return flag;
 }
 
+uint8_t myi2c_read ( myi2c * hi2c, uint8_t * dat, uint32_t len )
+{
+    uint8_t flag = 1;
+    uint32_t i;
+    
+	myi2c_start(hi2c);
+    
+    flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) | 0x01);
+	
+    for( i = 0; i < len - 1; i++ )
+        dat[i] = myi2c_receive( hi2c, 1 );
+    dat[i] = myi2c_receive( hi2c, 0 );
+    
+	myi2c_end(hi2c);
+    
+	return flag;
+}
+
+
 uint8_t myi2c_read_byte ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat )
 {
     uint8_t flag = 1;
@@ -191,6 +227,8 @@ uint8_t myi2c_read_byte ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t
     if( addr_len == 2 )
         flag &= myi2c_transmit(hi2c,(uint8_t)(addr>>8));
     flag &= myi2c_transmit(hi2c,(uint8_t)(addr));
+    
+    myi2c_start(hi2c);
     
     flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) | 0x01);
 	
@@ -214,6 +252,8 @@ uint8_t myi2c_read_bytes ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_
         flag &= myi2c_transmit(hi2c,(uint8_t)(addr>>8));
     flag &= myi2c_transmit(hi2c,(uint8_t)(addr));
     
+    myi2c_start(hi2c);
+    
     flag &= myi2c_transmit(hi2c,( hi2c->slaver_addr << 1) | 0x01);
 	
     for( i = 0; i < len - 1; i++ )
@@ -233,7 +273,7 @@ uint8_t myi2c_detect ( myi2c * hi2c )
 	for( i = 0; i <= 0x7F; i++ )
 	{	
 		myi2c_start(hi2c);
-		find = myi2c_transmit(hi2c,i);
+		find = myi2c_transmit(hi2c,i<<1);
 		myi2c_end(hi2c);
         if(find)
         {

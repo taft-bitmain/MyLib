@@ -22,8 +22,10 @@ EXAMPLE CODE:
     static myi2c i2c1 = {
         .SCL_port = GPIOx,.SCL_pin = GPIO_PIN_x,
         .SDA_port = GPIOx,.SDA_pin = GPIO_PIN_x,
-        .Speed = 1 ,.DevAddr = 0x00
+        .speed = 1 ,.slaver_addr = 0x00
     };
+    
+    myi2c_io_init(&i2c1);
     
 	if( myi2c_detect(&i2c1) )
         myprintf("Detect: 0x%X\r\n",i2c1.slaver_addr);
@@ -61,8 +63,11 @@ void	    myi2c_end           ( myi2c * hi2c );
 
 /******************* Main Functions **************************/
 
+uint8_t     myi2c_write        ( myi2c * hi2c, const uint8_t * dat, uint32_t len );
 uint8_t	    myi2c_write_byte   ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t dat );
 uint8_t	    myi2c_write_bytes  ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, const uint8_t * dat, uint32_t len );
+
+uint8_t     myi2c_read         ( myi2c * hi2c, uint8_t * dat, uint32_t len );
 uint8_t	    myi2c_read_byte    ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat );
 uint8_t	    myi2c_read_bytes   ( myi2c * hi2c, uint16_t addr, uint8_t addr_len, uint8_t * dat, uint32_t len );
 

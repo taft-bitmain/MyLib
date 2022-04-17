@@ -1,26 +1,24 @@
 /*******************************************************************************
  * @file     mlx90614.c
  * @brief    Drive the IC mlx90614
- * @version  V1.0
- * @date     2022.2.9
+ * @version  V1.1
+ * @date     2022.4.17
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
 ******************************************************************************/
 
 #include "mlx90614.h"
 
-/***************** Basic Interface *************************/
-inline uint8_t MLX90614_I2C_Write ( uint8_t cmd, uint8_t * pdatain, uint8_t len )
-{
-    return MyI2C_WriteMem( &mlx90614_i2c, cmd, pdatain, len );
-}
-inline uint8_t MLX90614_I2C_Read ( uint8_t cmd, uint8_t * pdataout, uint8_t len )
-{
-    return MyI2C_ReadMem( &mlx90614_i2c, cmd, pdataout, len );
-}
-
 
 /****************** Main Functions *************************/
+
+uint8_t MLX90614_Init ( void )
+{
+#ifdef MLX90614_I2C_SOFTWARE
+    myi2c_io_init(&mlx90614_i2c);
+#endif
+    return 0;
+}
 
 uint8_t MLX90614_PEC_Cal(const uint8_t * data,uint16_t len, uint16_t polynomial)
 {
@@ -42,20 +40,20 @@ uint8_t MLX90614_PEC_Cal(const uint8_t * data,uint16_t len, uint16_t polynomial)
 uint16_t MLX90614_RegRead ( uint8_t addr )
 {
     uint8_t data[6];
-    data[0] = MLX90614_I2C_ADDR;
+    data[0] = (MLX90614_I2C_ADDR<<1);
     data[1] = addr;
-    data[2] = MLX90614_I2C_ADDR|0x01;
+    data[2] = (MLX90614_I2C_ADDR<<1)|0x01;
     MLX90614_I2C_Read(addr , data + 3 , 3);
     if( MLX90614_PEC_Cal(data, 6, 0x107) == 0x00 )
         return  (data[4] << 8) | data[3];
     else
-        return 0xffff;
+        return 0x0000;
 }
 
 uint8_t MLX90614_RegWrite ( uint8_t addr , uint16_t dat)
 {
     uint8_t data[5];
-    data[0] = MLX90614_I2C_ADDR;
+    data[0] = (MLX90614_I2C_ADDR<<1);
     data[1] = addr;
     data[2] = dat;
     data[3] = (dat >> 8) & 0xff;
@@ -64,4 +62,7 @@ uint8_t MLX90614_RegWrite ( uint8_t addr , uint16_t dat)
     return MLX90614_I2C_Write(addr , data + 2 , 3);
 }
 
-
+float MLX90614_GetTemp( void )
+{
+    return MLX90614_RegRead(MLX90614_CMD_RAM|MLX90614_RAM_TOBJ1) * 0.02 - 273.15;
+}

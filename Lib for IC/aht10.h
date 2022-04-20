@@ -70,12 +70,12 @@ static inline uint8_t AHT10_I2C_Read ( uint8_t * pdataout, uint8_t len )
 
 static inline uint8_t AHT10_I2C_Write ( uint8_t * pdatain, uint8_t len )
 {
-    return HAL_I2C_Master_Transmit(&AHT10_I2C_HANDLE,AHT10_I2C_ADDR,pdatain,len,500);
+    return HAL_I2C_Master_Transmit(&AHT10_I2C_HANDLE,AHT10_I2C_ADDR<<1,pdatain,len,500);
 }
 
 static inline uint8_t AHT10_I2C_Read ( uint8_t * pdataout, uint8_t len )
 {
-    return HAL_I2C_Master_Receive(&AHT10_I2C_HANDLE,AHT10_I2C_ADDR,pdataout,len,500);
+    return HAL_I2C_Master_Receive(&AHT10_I2C_HANDLE,AHT10_I2C_ADDR<<1,pdataout,len,500);
 }
 
 #endif

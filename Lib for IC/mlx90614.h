@@ -60,12 +60,12 @@ static inline uint8_t MLX90614_I2C_Read ( uint8_t cmd, uint8_t * pdataout, uint8
 
 static inline uint8_t MLX90614_I2C_Write ( uint8_t cmd, uint8_t * pdatain, uint8_t len )
 {
-    return HAL_I2C_Mem_Write( &MLX90614_I2C_HANDLE , MLX90614_I2C_ADDR, cmd, I2C_MEMADD_SIZE_8BIT , pdatain, len, 500 );
+    return HAL_I2C_Mem_Write( &MLX90614_I2C_HANDLE , MLX90614_I2C_ADDR<<1, cmd, I2C_MEMADD_SIZE_8BIT , pdatain, len, 500 );
 }
 
 static inline uint8_t MLX90614_I2C_Read ( uint8_t cmd, uint8_t * pdataout, uint8_t len )
 {
-    return HAL_I2C_Mem_Read( &MLX90614_I2C_HANDLE , MLX90614_I2C_ADDR, cmd, I2C_MEMADD_SIZE_8BIT , pdataout, len, 500 );
+    return HAL_I2C_Mem_Read( &MLX90614_I2C_HANDLE , MLX90614_I2C_ADDR<<1, cmd, I2C_MEMADD_SIZE_8BIT , pdataout, len, 500 );
 }
 
 #endif

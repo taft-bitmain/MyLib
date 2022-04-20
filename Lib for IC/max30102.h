@@ -10,21 +10,25 @@
 TIPS:
 	
 EXAMPLE:
+
+    uint16_t LED_Data[1024];
+    uint16_t IR_Data[1024];
+
 	static uint32_t red, ir;
     
-    if( MAX30102_Reset() )
-        myprintf("MAX30102_Reset OK\r\n");
-    if( MAX30102_Init() )
-        myprintf("MAX30102_Init OK\r\n");
+    MAX30102_Reset();
+    MAX30102_Init();
     
     while( 1 )
     {
-        // check the interrupt pin
-        while( HAL_GPIO_ReadPin( GPIOB, GPIO_PIN_8 ) );
-        if( MAX30102_ReadFIFO( &red, &ir ) )
+        static uint16_t size;
+
+        MAX30102_Sample( LED_Data, IR_Data, 1000, &size );
+        if(size == 1000)
         {
-            myprintf( "ch1=%d,", red );
-            myprintf( "ch2=%d,", ir );
+            for(uint16_t i = 0; i < size ; i++)
+            myprintf("LED=%d,IR=%d,",LED_Data[i],IR_Data[i]);
+            size = 0;
         }
     }
 *******************************************************************************/
@@ -36,27 +40,83 @@ extern "c" {
 
 #include "stdint.h"
 
+#define MAX30102_I2C_ADDR      (0x57)
+
+#define MAX30102_I2C_SOFTWARE
+//#define MAX30102_I2C_HARDWARE
+
 /***************** Basic Interface *************************/
+
+#ifdef MAX30102_I2C_SOFTWARE /* software i2c */
+
 #include "myi2c.h"
 
-#define     MAX30102_I2CADDR    0xAE 
-
-static MyI2C max30102_i2c = {
-	.SCL_Port = GPIOB,.SCL_Bit = GPIO_PIN_10,
-	.SDA_Port = GPIOB,.SDA_Bit = GPIO_PIN_0,
-	.Speed = 2 ,.DevAddr = MAX30102_I2CADDR
+static myi2c max30102_i2c = {
+	.SCL_port = GPIOB,.SCL_pin = GPIO_PIN_6,
+	.SDA_port = GPIOB,.SDA_pin = GPIO_PIN_7,
+	.speed = 2 ,.slaver_addr = MAX30102_I2C_ADDR
 };
 
-uint8_t     MAX30102_ReadReg     ( uint8_t regaddr );
-uint8_t     MAX30102_ReadRegs    ( uint8_t regaddr,uint8_t * pdat,uint16_t len );
-uint8_t     MAX30102_WriteReg    ( uint8_t regaddr,uint8_t dat );
-void        MAX30102_Delayms     ( uint16_t ms );
+
+static inline uint8_t MAX30102_ReadReg( uint8_t regaddr )
+{
+    uint8_t dat;
+    myi2c_read_byte(&max30102_i2c, regaddr , 1 , &dat );
+    return dat;
+}
+
+static inline uint8_t MAX30102_ReadRegs( uint8_t regaddr,uint8_t * pdat,uint16_t len )
+{
+    return myi2c_read_bytes(&max30102_i2c, regaddr , 1 , pdat, len);
+}
+
+static inline uint8_t MAX30102_WriteReg( uint8_t regaddr,uint8_t dat )
+{
+    return myi2c_write_byte(&max30102_i2c, regaddr , 1 , dat );
+}
+
+
+#endif
+
+#ifdef MAX30102_I2C_HARDWARE   /* hardware i2c */
+
+#define MAX30102_I2C_HANDLE        hi2c1
+
+#include "i2c.h"
+
+static inline uint8_t MAX30102_ReadReg( uint8_t regaddr )
+{
+    uint8_t dat;
+    return HAL_I2C_Mem_Read( &MAX30102_I2C_HANDLE , MAX30102_I2C_ADDR<<1, regaddr, I2C_MEMADD_SIZE_8BIT , &dat, 1, 500 ) == HAL_OK ? dat : 0x00;
+}
+
+static inline uint8_t MAX30102_ReadRegs( uint8_t regaddr,uint8_t * pdat,uint16_t len )
+{
+    return HAL_I2C_Mem_Read( &MAX30102_I2C_HANDLE , MAX30102_I2C_ADDR<<1, regaddr, I2C_MEMADD_SIZE_8BIT , pdat, len, 500 ) == HAL_OK ? 1 : 0;
+}
+
+static inline uint8_t MAX30102_WriteReg( uint8_t regaddr,uint8_t dat )
+{
+    return HAL_I2C_Mem_Write( &MAX30102_I2C_HANDLE , MAX30102_I2C_ADDR<<1, regaddr, I2C_MEMADD_SIZE_8BIT , &dat, 1, 500 ) == HAL_OK ? 1 : 0;
+}
+
+
+#endif
+
+
+static inline void MAX30102_Delayms ( uint16_t ms )
+{
+    HAL_Delay(ms);
+}
 
 /****************** Main Functions *************************/
 
 uint8_t     MAX30102_Init        ( void );
 uint8_t     MAX30102_Reset       ( void );
-uint8_t     MAX30102_ReadFIFO    ( uint32_t * pDataRed, uint32_t * pDataIR );
+uint8_t     MAX30102_ReadFIFO    ( uint16_t * pDataRed, uint16_t * pDataIR );
+
+// Call this function frequently, base on the sample rate and fifo size
+uint16_t    MAX30102_Sample      ( uint16_t * pDataRed, uint16_t * pDataIR, uint16_t count, uint16_t *size  );
 
 /***************** Registers Definition ********************/
 

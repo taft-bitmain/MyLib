@@ -1,8 +1,8 @@
 /********************************************************************************
  * @file     ssd1306.h
  * @brief    drive the oled with SSD1306
- * @version  V1.4
- * @date     2022.2.28
+ * @version  V1.5
+ * @date     2022.4.21
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
  *******************************************************************************/
@@ -22,38 +22,75 @@ EXAMPLE CODE:
 #ifndef __SSD1306_H
 #define __SSD1306_H
 
-#define     SSD1306_X_MAX      128
-#define     SSD1306_Y_MAX      32
-
-#define     SSD1306_IF_I2C
-// or
-//#define     SSD1306_IF_SPI
-
 #include "stdint.h"
+
+#define     SSD1306_X_MAX      128
+#define     SSD1306_Y_MAX      64
+
+//#define     SSD1306_IF_I2C_SW
+#define     SSD1306_IF_I2C_HW
+//#define     SSD1306_IF_SPI_SW
+//#define     SSD1306_IF_SPI_HW
 
 /****************** Basic Interface *************************/
 
-// I2C
-#ifdef SSD1306_IF_I2C
-
-#include "myi2c.h"
-
-#define SSD1306_I2C_ADDR	0x78
+#define SSD1306_I2C_ADDR	0x3C
 #define SSD1306_I2C_CMD     0x00
 #define SSD1306_I2C_DATA	0x40
+
+// Software I2C
+#ifdef SSD1306_IF_I2C_SW
+
+#include "myi2c.h"
 
 static myi2c ssd1306_i2c =
 {
     .SCL_port = GPIOx,.SCL_pin = GPIO_PIN_x,
     .SDA_port = GPIOx,.SDA_pin = GPIO_PIN_x,
-    .speed = 1,.slaver_addr = SSD1306_I2C_ADDR >> 1
+    .speed = 1,.slaver_addr = SSD1306_I2C_ADDR
 };
+
+static inline void SSD1306_LL_Init(void)
+{
+    myi2c_io_init(&ssd1306_i2c);
+}
+
+static inline void SSD1306_LL_SendCmd(uint8_t *data,uint16_t len)
+{
+	myi2c_write_bytes(&ssd1306_i2c, SSD1306_I2C_CMD, 1, data, len);
+}
+static inline void SSD1306_LL_SendData(uint8_t *data,uint16_t len)
+{
+	myi2c_write_bytes(&ssd1306_i2c, SSD1306_I2C_DATA, 1, data, len);
+}
 
 #endif
 
-// SPI
+// Hardware I2C
+#ifdef SSD1306_IF_I2C_HW
 
-#ifdef SSD1306_IF_SPI
+#define SSD1306_I2C_HANDLE        hi2c1
+
+#include "i2c.h"
+
+static inline void SSD1306_LL_Init(void)
+{
+    ;
+}
+
+static inline void SSD1306_LL_SendCmd(uint8_t *data,uint16_t len)
+{
+	HAL_I2C_Mem_Write( &SSD1306_I2C_HANDLE , SSD1306_I2C_ADDR<<1, SSD1306_I2C_CMD, I2C_MEMADD_SIZE_8BIT , data, len, 500 );
+}
+static inline void SSD1306_LL_SendData(uint8_t *data,uint16_t len)
+{
+	HAL_I2C_Mem_Write( &SSD1306_I2C_HANDLE , SSD1306_I2C_ADDR<<1, SSD1306_I2C_DATA, I2C_MEMADD_SIZE_8BIT , data, len, 500 );
+}
+
+#endif
+
+// Software SPI
+#ifdef SSD1306_IF_SPI_SW
 
 #include "myspi.h"
 
@@ -69,11 +106,63 @@ static myspi ssd1306_spi =
     .CPOL = 0, .CPHA = 0
 };
 
+static inline void SSD1306_LL_Init(void)
+{
+	SSD1306_LL_PinRST(0);
+    myspi_io_init(&ssd1306_spi);
+	SSD1306_LL_PinRST(1);
+}
+
+static inline void SSD1306_LL_SendCmd(uint8_t *data,unsigned int len)
+{
+	SSD1306_LL_PinDC(0);
+	myspi_write(&ssd1306_spi,data,len);
+}
+
+static inline void SSD1306_LL_SendData(uint8_t *data,unsigned int len)
+{
+	SSD1306_LL_PinDC(1);
+	myspi_write(&ssd1306_spi,data,len);
+}
+
 #endif
 
-void    SSD1306_LL_Init             ( void );
-void    SSD1306_LL_SendCmd          ( uint8_t * data, uint16_t len );
-void    SSD1306_LL_SendData         ( uint8_t * data, uint16_t len );
+// Hardware SPI
+
+#ifdef SSD1306_IF_SPI_HW
+
+#define SSD1306_SPI_HANDLE        hspi2
+#include "spi.h"
+
+#define SSD1306_LL_PinRST(x)		( x ? (GPIOC->BSRR = GPIO_PIN_7) : (GPIOC->BRR = GPIO_PIN_7) )
+#define SSD1306_LL_PinDC(x)		    ( x ? (GPIOC->BSRR = GPIO_PIN_6) : (GPIOC->BRR = GPIO_PIN_6) )
+#define SSD1306_LL_PinCS(x)		    ( x ? (GPIOB->BSRR = GPIO_PIN_12) : (GPIOB->BRR = GPIO_PIN_12) )
+
+
+static inline void SSD1306_LL_Init(void)
+{
+    SSD1306_LL_PinRST(1);
+	SSD1306_LL_PinCS(1);
+}
+
+static inline void SSD1306_LL_SendCmd(uint8_t *data,uint16_t len)
+{
+	SSD1306_LL_PinDC(0);
+    SSD1306_LL_PinCS(0);
+    HAL_SPI_Transmit(&SSD1306_SPI_HANDLE,data,len,500);
+    SSD1306_LL_PinCS(1);
+}
+
+static inline void SSD1306_LL_SendData(uint8_t *data,uint16_t len)
+{
+	SSD1306_LL_PinDC(1);
+    SSD1306_LL_PinCS(0);
+	HAL_SPI_Transmit(&SSD1306_SPI_HANDLE,data,len,500);
+    SSD1306_LL_PinCS(1);
+}
+
+#endif
+
 
 /******************* Main Functions **************************/
 

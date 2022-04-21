@@ -1,57 +1,13 @@
 /*******************************************************************************
  * @file     ssd1306.h
  * @brief    drive the oled with SSD1306
- * @version  V1.4
- * @date     2022.2.28
+ * @version  V1.5
+ * @date     2022.4.21
  * @author   RainingRabbits 1466586342@qq.com
  * @code     UTF-8
  ******************************************************************************/
 
 #include "ssd1306.h"
-
-/***************** Basic Interface *****************/
-
-#ifdef SSD1306_IF_I2C                   // I2C
-
-inline void SSD1306_LL_Init(void)
-{
-    myi2c_io_init(&ssd1306_i2c);
-}
-
-inline void SSD1306_LL_SendCmd(uint8_t *data,uint16_t len)
-{
-	myi2c_write_bytes(&ssd1306_i2c, SSD1306_I2C_CMD, 1, data, len);
-}
-inline void SSD1306_LL_SendData(uint8_t *data,uint16_t len)
-{
-	myi2c_write_bytes(&ssd1306_i2c, SSD1306_I2C_DATA, 1, data, len);
-}
-
-#endif
-
-
-#ifdef SSD1306_IF_SPI                   // SPI
-
-void SSD1306_SendInit(void)
-{
-	SSD1306_LL_PinRST(0);
-    myspi_io_init(&ssd1306_spi);
-	SSD1306_LL_PinRST(1);
-}
-
-inline void SSD1306_LL_SendCmd(uint8_t *data,unsigned int len)
-{
-	SSD1306_LL_PinDC(0);
-	myspi_write(&ssd1306_spi,data,len);
-}
-
-inline void SSD1306_LL_SendData(uint8_t *data,unsigned int len)
-{
-	SSD1306_LL_PinDC(1);
-	myspi_write(&ssd1306_spi,data,len);
-}
-
-#endif
 
 
 
@@ -249,15 +205,22 @@ void SSD1306_Init(void)
 //	SSD1306_Address_Culumn_M0M1(0,127);
 //	SSD1306_Address_Page_M0M1(0,7);
 
+
+    
+#if SSD1306_Y_MAX == 32
+    //SSD1306_Set_COMPinCfg(SSD1306_COMPINCFG_0); // 128*32
+#elif SSD1306_Y_MAX == 64
+	SSD1306_Set_COMPinCfg(SSD1306_COMPINCFG_1); // 128*64
+#else
+#error SSD1306 screen size define invalid(only can be 32 or 64)!
+#endif
+
 	SSD1306_Set_Clock(0xF0);
 	SSD1306_Set_Precharge(0x22);
 	SSD1306_Set_Vcomh(0x20);
 	SSD1306_Set_MuxRatio(SSD1306_Y_MAX - 1);
 	SSD1306_Set_Offset(0x00);
-    
-    /*********** todo *****************/
-	SSD1306_Set_COMPinCfg(SSD1306_COMPINCFG_0);
-    
+
 	SSD1306_DisPlay_Power(1);
 }
 

@@ -280,13 +280,14 @@ void MYGUI_Print(int16_t x,int16_t y,const char *data,uint16_t datalen,FONT_SIZE
 void MYGUI_Printf(int16_t x,int16_t y,FONT_SIZE size,uint8_t color,const char * format, ...)
 {
     char *pbuff = (char *)malloc(128);
+    uint16_t len;
     
 	va_list arg_ptr;
     va_start(arg_ptr, format);
-    vsprintf(pbuff, format, arg_ptr);
+    len = vsprintf(pbuff, format, arg_ptr);
     va_end(arg_ptr);
     
-	MYGUI_Print(x,y,(char*)pbuff,11,size,color);
+	MYGUI_Print(x,y,(char*)pbuff,len,size,color);
     free(pbuff);
 }
 

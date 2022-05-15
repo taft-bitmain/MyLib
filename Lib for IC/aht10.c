@@ -85,8 +85,8 @@ uint8_t AHT10_MeasureGetf ( float *RH , float *Temp )
     uint32_t rh,temp;
     if ( AHT10_MeasureGetRaw(&rh,&temp) )
     {
-        *RH = (uint8_t)(rh*100.0/0xfffff);
-        *Temp = (uint8_t)(temp*200.0/0xfffff-50);
+        *RH = (rh*100.0/0xfffff);
+        *Temp = (temp*200.0/0xfffff-50);
         return 1;
     }
     *RH = 0;

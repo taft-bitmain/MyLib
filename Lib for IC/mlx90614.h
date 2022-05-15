@@ -10,9 +10,11 @@
 TIPS:
 	1. The I2C clock must be lower than 150KHz.
 EXAMPLE:
-	float temp = MLX90614_RegRead(MLX90614_CMD_RAM|MLX90614_RAM_TOBJ1) * 0.02 - 273.15;
-    myprintf("temp = :%f \r\n", temp);
+	float temp = MLX90614_GetTemp();
+    myprintf("temp = %f \r\n", temp);
+    
 *******************************************************************************/
+
 #ifndef __MLX90614_H
 #define __MLX90614_H
 #ifdef __cplusplus
@@ -22,10 +24,12 @@ extern "c" {
 #include "stdint.h"
 #include "stm32f1xx.h"
 
+//#define MLX90614_I2C_SOFTWARE
+#define MLX90614_I2C_HARDWARE
+
+
 #define MLX90614_I2C_ADDR      0x5A
 
-#define MLX90614_I2C_SOFTWARE
-//#define MLX90614_I2C_HARDWARE
 
 /***************** Basic Interface *************************/
 
@@ -53,7 +57,7 @@ static inline uint8_t MLX90614_I2C_Read ( uint8_t cmd, uint8_t * pdataout, uint8
 
 #ifdef MLX90614_I2C_HARDWARE   /* hardware i2c */
 
-#define MLX90614_I2C_HANDLE        hi2cx
+#define MLX90614_I2C_HANDLE        hi2c1
 
 #include "i2c.h"
 

@@ -11,403 +11,421 @@
 
 #include "string.h"
 #include <stdio.h>
-
-uint8_t   transparent;
-uint8_t * rxbuffer_now;
-volatile uint16_t  rx_len_now;
+#include <stdlib.h>
 
 
-inline void esp8266_ll_send ( uint8_t * txbuffer, uint16_t tx_len )
+uint8_t _transparent_state;
+esp_buffer * _rxbuffer_now;
+
+esp_buffer * esp_buffer_static( uint8_t * mem, uint16_t capicity )
 {
-    if( txbuffer && tx_len )
+    esp_buffer * mybuf = ( esp_buffer * )malloc( sizeof(esp_buffer) );
+    
+    if( mybuf )
     {
-        //myprintf( "\tll send:%s\r\n", ( char * )txbuffer );
-        HAL_UART_Transmit_DMA( &ESP8266_LL_HUART, txbuffer, tx_len );
+        mybuf->type = 1;
+        mybuf->data = mem;
+        mybuf->cap = capicity;
+        mybuf->size = 0;
     }
+    
+    return mybuf;
 }
 
-inline void esp8266_ll_recv( uint8_t * rxbuffer, uint16_t rx_len )
+esp_buffer * esp_buffer_dynamic( uint16_t capicity )
 {
-    if( rxbuffer )
+    esp_buffer * mybuf = ( esp_buffer * )malloc( sizeof(esp_buffer) );
+    
+    if( mybuf )
     {
-        HAL_UART_AbortReceive( &ESP8266_LL_HUART );
-        HAL_UARTEx_ReceiveToIdle_DMA( &ESP8266_LL_HUART, rxbuffer, rx_len );
-        rxbuffer_now = rxbuffer;
-    }
-}
-
-inline void esp8266_ll_recv_callback ( UART_HandleTypeDef * huart,
-                                       uint16_t Size )
-{
-    rx_len_now = Size;
-    rxbuffer_now[rx_len_now] = 0;
-    // todo
-}
-
-
-uint8_t esp8266_cmd_wait ( esp8266 * esp, uint32_t timeout )
-{
-    uint32_t tick_now;
-
-    if( timeout )
-    {
-        rx_len_now = 0;
-        esp8266_ll_recv( esp->rxbuffer, ESP8266_BUFLEN2 );
-    }
-
-    esp8266_ll_send( esp->txbuffer, esp->tx_len );
-    esp->tx_len = 0;
-
-    tick_now = HAL_GetTick();
-
-    while( HAL_GetTick() < tick_now + timeout )
-    {
-        if( rx_len_now )
+        mybuf->type = 1;
+        mybuf->data = ( uint8_t * )malloc( capicity );
+        if( mybuf->data == NULL )
         {
-            //myprintf( "\tll recv:%s\r\n", ( char * )esp->rxbuffer );
-            
-            if ( strstr( ( char * )esp->rxbuffer, "OK" ) != NULL )
-            {
-                return 1;
-            }
+            free( mybuf );
+            return NULL;
+        }
+        mybuf->cap = capicity;
+        mybuf->size = 0;
+    }
+    
+    return mybuf;
+}
 
-            else if( strstr( ( char * )esp->rxbuffer, "ERROR" ) != NULL )
-            {
-                return 2;
-            }
+void esp_buffer_free( esp_buffer * buffer )
+{
+    if( buffer )
+    {
+        if( buffer->type == 2 )
+        {
+            free( buffer->data );
+        }
+        free( buffer );
+    }
+}
 
-            else if( strstr( ( char * )esp->rxbuffer, "busy" ) != NULL )
-            {
-                return 3;
-            }
+void esp_ll_recv_callback ( UART_HandleTypeDef * huart, uint16_t Size )
+{
+    _rxbuffer_now->size = Size;
+    _rxbuffer_now->data[_rxbuffer_now->size] = 0;
+    //esp_debug("ESP8266 : log : get packet\n");
+}
 
-            return 4;
+void esp_send_buffer(esp_buffer * txbuf)
+{
+    if( txbuf )
+    {
+        if ( txbuf->data )
+        {
+            //esp_debug("ESP8266 : log : send\n");
+            esp_ll_send( txbuf->data, txbuf->size );
+            txbuf->size = 0;
         }
     }
+}
 
-    //HAL_UART_AbortReceive( &ESP8266_LL_HUART );
+void esp_recv_buffer(esp_buffer * rxbuf)
+{
+    if( rxbuf )
+    {
+        if( rxbuf->data != NULL )
+        {
+            rxbuf->size = 0;
+            _rxbuffer_now = rxbuf;
+            //esp_debug("ESP8266 : log : recv\n");
+            esp_ll_recv( rxbuf->data, rxbuf->cap );
+        }
+    }
+}
+
+
+uint8_t esp_cmd_wait ( esp_buffer * txbuf, esp_buffer * rxbuf, uint32_t timeout )
+{
+    if( rxbuf )
+    {
+        //rxbuf->size = 0;
+        esp_recv_buffer(rxbuf);
+    }
+    if( txbuf )
+    {
+        esp_send_buffer(txbuf);
+        //txbuf->size = 0;
+    }
+    if( timeout )
+    {
+        uint32_t tick_now = HAL_GetTick();
+
+        while( HAL_GetTick() < tick_now + timeout )
+        {
+            if( rxbuf )
+            {
+                if( rxbuf->size )
+                {
+                    if ( strstr( ( char * )rxbuf->data, "OK" ) != NULL )
+                    {
+                        return 1;
+                    }
+
+                    else if( strstr( ( char * )rxbuf->data, "ERROR" ) != NULL )
+                    {
+                        return 2;
+                    }
+
+                    else if( strstr( ( char * )rxbuf->data, "busy" ) != NULL )
+                    {
+                        return 3;
+                    }
+
+                    return 4;
+                }
+            }
+        }
+    }
     return 0;
 }
 
 
-uint8_t esp8266_reset( esp8266 * esp )
+uint8_t esp_reset( esp * myesp )
 {
-#if (ESP_USE_PINRST == 1)
-    {
-        HAL_GPIO_WritePin( GPIOA, GPIO_PIN_1, GPIO_PIN_RESET );
-        HAL_Delay( 200 );
-        HAL_GPIO_WritePin( GPIOA, GPIO_PIN_1, GPIO_PIN_SET );
-        HAL_Delay( 500 );
-        return 1;
-    }
+#ifdef ESP_USE_PINRST
+
+    HAL_GPIO_WritePin( GPIOA, GPIO_PIN_1, GPIO_PIN_RESET );
+    HAL_Delay( 200 );
+    HAL_GPIO_WritePin( GPIOA, GPIO_PIN_1, GPIO_PIN_SET );
+    HAL_Delay( 500 );
+    return 0;
+    
 #else
-    esp->tx_len = sprintf( ( char * )esp->txbuffer, "AT+RST\r\n" );
-    esp8266_cmd_wait( esp, 0 );
-    esp8266_ll_delayms( 1000 );
-    return 1;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT+RST\r\n" );
+    esp_cmd_wait( myesp->ptxbuf, NULL, 1000 );
+    return 0;
 #endif
 }
 
-uint8_t esp8266_at( esp8266 * esp )
+uint8_t esp_at( esp * myesp )
 {
-
-    esp->tx_len = sprintf( ( char * )esp->txbuffer, "AT\r\n" );
-
-    if( esp8266_cmd_wait( esp, 500 ) == 1 )
-        return 1;
-
-    else
+    uint8_t ret;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT\r\n" );
+    ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 1000 );
+    
+    if( ret != 1 )
     {
-        esp8266_debug( "Log:ESP8266 AT test fail\r\n" );
-        return 0;
-    }
-}
-
-uint8_t esp8266_setmode( esp8266 * esp )
-{
-    esp->tx_len = sprintf( ( char * )esp->txbuffer, "AT+CWMODE=%d\r\n", esp->mode );
-
-    if( esp8266_cmd_wait( esp, 500 ) == 1 )
-        return 1;
-
-    else
-    {
-        esp8266_debug( "Log:ESP8266 set mode fail\r\n" );
-        return 0;
-    }
-}
-
-uint8_t esp8266_join_ap( esp8266 * esp )
-{
-    uint8_t i;
-
-    if( esp->mode == 1 || esp->mode == 3 )
-    {
-        esp->tx_len = sprintf( ( char * )esp->txbuffer, "AT+CWJAP?\r\n" );
-        esp8266_cmd_wait( esp, 500 );
-
-        if( strstr( ( char * )esp->rxbuffer, ( char * )esp->ssid ) != NULL )
-        {
-            esp8266_debug( "Log:ESP8266 has been joined AP\r\n" );
-            esp->connected = 1;
-            return 1;
-        }
-
-        esp8266_debug( "Log:ESP8266 join AP...\r\n" );
-
-        esp->connected = 0;
-
-        esp->tx_len = sprintf( ( char * )esp->txbuffer, "AT+CWJAP=\"%s\",\"%s\"\r\n",
-                               esp->ssid, esp->pswd );
-
-        for( i = 0; i < 5 ; i++ )
-        {
-            if( esp8266_cmd_wait( esp, 5000 ) == 0 )
-                return 0;
-
-            if( strstr( ( char * )esp->rxbuffer, "OK" ) )
-            {
-                esp->connected = 1;
-                esp8266_debug( "Log:ESP8266 Join AP success\r\n" );
-                return 1;
-            }
-
-        }
-
-        esp8266_debug( "Log:ESP8266 Join AP fail\r\n" );
-        return 0;
-    }
-
-    else
-    {
+        esp_debug( "ESP8266 : error : AT test fail\n" );
         return 1;
     }
+    return 0;
 }
 
-uint8_t esp8266_set_ap( esp8266 * esp )
+uint8_t esp_at_echo( esp * myesp, uint8_t echo )
 {
-    if( esp->mode == 2 || esp->mode == 3 )
+    
+    uint8_t ret;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "ATE%d\r\n", echo );
+    ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 1000 );
+    
+    if( ret != 1 )
     {
-        esp->tx_len = sprintf( ( char * )esp->txbuffer,
-                               "AT+CWSAP=\"%s\",\"%s\",1,%d\r\n",
-                                esp->ssid_ap, esp->pswd_ap, esp->mode_ap );
+        esp_debug( "ESP8266 : error : Set echo fail\n" );
+        return 1;
+    }
+    return 0;
+}
 
-        if( esp8266_cmd_wait( esp, 2000 ) == 1 )
-        {
-            esp8266_debug( "Log:ESP8266 Set AP success\r\n" );
-            return 1;
-        }
+uint8_t esp_setmode( esp * myesp, uint8_t mode )
+{
+    uint8_t ret;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT+CWMODE=%d\r\n", mode );
+    ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 500 );
+    
+    if( ret != 1 )
+    {
+        esp_debug( "ESP8266 : error : Set mode fail\n" );
+        return 1;
+    }
+    return 0;
+    
+}
 
-        else
+uint8_t esp_join_ap( esp * myesp, uint8_t * ssid, uint8_t * pswd  )
+{
+    uint8_t ret;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT+CWJAP?\r\n" );
+    ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 500 );
+    
+    if( strstr( ( char * )myesp->prxbuf->data, ( char * )ssid ) != NULL )
+    {
+        esp_debug( "ESP8266 : log : Has been joined AP\n" );
+        return 0;
+    }
+    
+    esp_debug( "ESP8266 : log : join AP ...\n" );
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT+CWJAP=\"%s\",\"%s\"\r\n", ssid, pswd );
+    
+    
+    for( uint8_t i = 0; i < 5 ; i++ )
+    {
+        ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 5000 );
+        
+        if( ret == 1 )
         {
-            esp8266_debug( "Log:ESP8266 Set AP fail\r\n" );
+            esp_debug( "ESP8266 : log : Join AP success\r\n" );
+            myesp->connected = 1;
             return 0;
         }
+
     }
-
-    else
-    {
-        return 1;
-    }
-}
-
-uint8_t esp8266_at_echo( esp8266 * esp, uint8_t echo )
-{
-    esp->tx_len = sprintf( ( char * )esp->txbuffer, "ATE%d\r\n",
-                           echo );
-
-    if( esp8266_cmd_wait( esp, 1000 ) == 1 )
-    {
-        return 1;
-    }
-
-    else
-    {
-        esp8266_debug( "Log:ESP8266 set at echo fail\r\n" );
-        return 0;
-    }
-}
-
-uint8_t esp8266_autocon( esp8266 * esp )
-{
-    esp->tx_len = sprintf( ( char * )esp->txbuffer, "AT+CWAUTOCONN=%d\r\n",
-                           esp->auto_connect );
-
-    if( esp8266_cmd_wait( esp, 1000 ) == 1 )
-    {
-        return 1;
-    }
-
-    else
-    {
-        esp8266_debug( "Log:ESP8266 set auto connect fail\r\n" );
-        return 0;
-    }
-}
-
-uint8_t esp8266_cipmode( esp8266 * esp )
-{
-    esp->tx_len = sprintf( ( char * )esp->txbuffer, "AT+CIPMODE=%d\r\n",
-                           esp->cipmode );
-
-    if( esp8266_cmd_wait( esp, 500 ) == 1 )
-    {
-        return 1;
-    }
-
-    else
-    {
-        esp8266_debug( "Log:ESP8266 set cipmode fail\r\n" );
-        return 0;
-    }
-}
-
-uint8_t esp8266_cipmux( esp8266 * esp )
-{
-    esp->tx_len = sprintf( ( char * )esp->txbuffer, "AT+CIPMUX=%d\r\n",
-                           esp->cipmux );
-
-    if( esp8266_cmd_wait( esp, 500 ) == 1 )
-    {
-        return 1;
-    }
-
-    else
-    {
-        esp8266_debug( "Log:ESP8266 set cipmux fail\r\n" );
-        return 0;
-    }
-}
-
-
-uint8_t esp8266_init ( esp8266 * esp )
-{
-    // register callback function for HAL_UARTEx_ReceiveToIdle_DMA
-    HAL_UART_RegisterRxEventCallback( &ESP8266_LL_HUART, esp8266_ll_recv_callback );
-
-    if( !esp8266_reset( esp ) )
-        return 0;
-
-    if( !esp8266_at_echo( esp, 0 ) )
-        return 0;
-
-    if( !esp8266_at( esp ) )
-        return 0;
-
-    return 1;
-}
-
-uint8_t esp8266_setup ( esp8266 * esp, uint8_t mode, uint8_t mode_ap,
-                        const char * ssid, const char * pswd, const char * ssid_ap,
-                        const char * pswd_ap, uint8_t auto_connect, uint8_t cipmode, uint8_t cipmux )
-{
-    if( mode > 3 || mode == 0 )
-        return 0;
-
-    esp->mode = mode;
-
-    if( mode_ap > 4 || mode_ap == 1 )
-        return 0;
-
-    esp->mode_ap = mode_ap;
-
-    strcpy( ( char * )esp->ssid, ( char * )ssid );
-    strcpy( ( char * )esp->pswd, ( char * )pswd );
-    strcpy( ( char * )esp->ssid_ap, ( char * )ssid_ap );
-    strcpy( ( char * )esp->pswd_ap, ( char * )pswd_ap );
-
-    esp->auto_connect = auto_connect ? 1 : 0;
-
-    esp->cipmux = cipmux ? 1 : 0;
     
-    esp->cipmode = cipmux ? 0 : (cipmode ? 1 : 0);
-
-    if( !esp8266_autocon( esp ) )
-        return 0;
-
-    if( !esp8266_setmode( esp ) )
-        return 0;
-
-    if( !esp8266_join_ap( esp ) )
-        return 0;
-
-    if( !esp8266_set_ap( esp ) )
-        return 0;
-
-    if( !esp8266_cipmode( esp ) )
-        return 0;
-
-    if( !esp8266_cipmux( esp ) )
-        return 0;
-
     return 1;
 }
 
-uint8_t esp8266_link_setup ( esp8266 * esp, esp8266_link * link, uint8_t id,
-                             uint8_t netpro, const char * ip, uint16_t port,	uint16_t localport,
-                             uint16_t keepalive )
+uint8_t esp_set_ap( esp * myesp, uint8_t * ssid, uint8_t * pswd, uint8_t mode )
 {
-    if( esp == NULL || link == NULL )
-        return 0;
+    uint8_t ret;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT+CWSAP=\"%s\",\"%s\",1,%d\r\n", (char *)ssid, (char *)pswd, mode );
+    ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 2000 );
+    
+    if( ret != 1 )
+    {
+        esp_debug( "ESP8266 : error : Set AP mode fail\n" );
+        return 1;
+    }
+    return 0;
+}
 
-    if( id > 4 )
-        return 0;
 
-    if( netpro > 3 && netpro == 0 )
-        return 0;
 
-    keepalive = ( keepalive > 7200 ) ? 7200 : keepalive;
+uint8_t esp_autocon( esp * myesp, uint8_t autocon )
+{
+    uint8_t ret;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT+CWAUTOCONN=%d\r\n", autocon );
+    ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 500 );
+    
+    if( ret != 1 )
+    {
+        esp_debug( "ESP8266 : error : Set auto connect fail\n" );
+        return 1;
+    }
+    return 0;
+    
+}
 
-    link->id = id;
-    link->netpro = netpro;
-    strcpy( ( char * )link->ip, ip );
-    link->linked = 0;
-    link->port = port;
-    link->localport = localport;
-    link->keepalive = keepalive;
-    link->tx_len = 0;
-    link->rx_len = 0;
+uint8_t esp_cipmode( esp * myesp, uint8_t cipmode )
+{
+    uint8_t ret;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT+CIPMODE=%d\r\n", cipmode );
+    ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 500 );
+    
+    if( ret != 1 )
+    {
+        esp_debug( "ESP8266 : error : Set cipmode fail\n" );
+        return 1;
+    }
+    return 0;
+}
 
-    switch( id )
+uint8_t esp_cipmux( esp * myesp, uint8_t cipmux )
+{
+    uint8_t ret;
+    myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "AT+CIPMUX=%d\r\n", cipmux );
+    ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 500 );
+    
+    if( ret != 1 )
+    {
+        esp_debug( "ESP8266 : error : Set cipmux fail\n" );
+        return 1;
+    }
+    return 0;
+}
+
+
+uint8_t esp_setup ( esp * myesp, esp_buffer * txbuf,esp_buffer * rxbuf )
+{
+    esp_ll_init();
+    
+    if( myesp == NULL || txbuf == NULL || rxbuf == NULL )
+        return 1;
+    
+    myesp->ptxbuf = txbuf;
+    myesp->prxbuf = rxbuf;
+    
+    if( myesp->mode > 3 || myesp->mode == 0 )
+        return 1;
+
+    if( myesp->mode_ap > 4 || myesp->mode_ap == 1 )
+        return 1;
+
+    if( myesp->mode == 1 || myesp->mode == 3 )
+    {
+        if( myesp->ssid[0] == 0 || myesp->pswd[0] == 0 )
+            return 1;
+    }
+    
+    if( myesp->mode == 2 || myesp->mode == 3 )
+    {
+        if( myesp->ssid_ap[0] == 0 || myesp->pswd_ap[0] == 0 )
+            return 1;
+    }
+
+    myesp->auto_connect = myesp->auto_connect ? 1 : 0;
+
+    myesp->cipmux = myesp->cipmux ? 1 : 0;
+    
+    myesp->cipmode = myesp->cipmux ? 0 : (myesp->cipmode ? 1 : 0);
+    
+    
+    
+    if( esp_reset( myesp ) )
+        return 2;
+    
+    if( esp_at( myesp ) )
+        return 3;
+    
+    if( esp_at_echo( myesp,0 ) )
+        return 4;
+
+    if( esp_autocon( myesp, myesp->auto_connect ) )
+        return 5;
+
+    if( esp_setmode( myesp, myesp->mode ) )
+        return 6;
+
+    if( myesp->mode == 1 || myesp->mode == 3 )
+    {
+        if( esp_join_ap( myesp ,myesp->ssid,myesp->pswd ) )
+            return 7;
+    }
+    
+    if( myesp->mode == 2 || myesp->mode == 3 )
+    {
+        if( esp_set_ap( myesp, myesp->ssid_ap, myesp->pswd_ap, myesp->mode_ap ) )
+            return 8;
+    }
+
+    if( esp_cipmode( myesp, myesp->cipmode ) )
+        return 9;
+
+    if( esp_cipmux( myesp, myesp->cipmux ) )
+        return 10;
+
+    return 0;
+}
+
+uint8_t esp_link_setup ( esp * myesp, esp_link * mylink, esp_buffer * txbuf, esp_buffer * rxbuf )
+{
+    if( myesp == NULL || mylink == NULL || txbuf == NULL || rxbuf == NULL )
+        return 1;
+    
+    mylink->ptxbuf = txbuf;
+    mylink->prxbuf = rxbuf;
+    
+    if( mylink->id > 4 )
+        return 2;
+    
+    switch( mylink->id )
     {
         case 0:
-            esp->link0 = link;
+            myesp->link0 = mylink;
             break;
 
         case 1:
-            esp->link1 = link;
+            myesp->link1 = mylink;
             break;
 
         case 2:
-            esp->link2 = link;
+            myesp->link2 = mylink;
             break;
 
         case 3:
-            esp->link3 = link;
+            myesp->link3 = mylink;
             break;
 
         case 4:
-            esp->link4 = link;
+            myesp->link4 = mylink;
             break;
     }
-
-    return 1;
+    
+    if( mylink->netpro > 3 && mylink->netpro == 0 )
+        return 2;
+    
+    mylink->linked = 0;
+    mylink->keepalive = (  mylink->keepalive > 7200 ) ? 7200 :  mylink->keepalive;
+    
+    return 0;
 }
 
-uint8_t esp8266_link_connect ( esp8266 * esp, esp8266_link * link )
+uint8_t esp_link_connect ( esp * esp, esp_link * link )
 {
-    char * p_txbuffer = ( char * )esp->txbuffer;
+    char * p_txbuffer = ( char * )esp->ptxbuf->data;
 
     if( esp == NULL || link == NULL )
     {
-        esp8266_debug( "Log:ESP8266 link connect fail for wrong parameters\r\n" );
-        return 0;
+        return 1;
     }
 
     if( !esp->connected )
     {
-        esp8266_debug( "Log:ESP8266 link connect fail as it is not connect to AP\r\n" );
-        return 0;
+        esp_debug( "ESP8266 : error : connect fail, not connect\n" );
+        return 2;
     }
 
     p_txbuffer += sprintf( p_txbuffer, "AT+CIPSTART=" );
@@ -437,180 +455,161 @@ uint8_t esp8266_link_connect ( esp8266 * esp, esp8266_link * link )
             return 0;
     }
 
-    esp->tx_len = ( uint8_t * )p_txbuffer - esp->txbuffer;
-    esp8266_cmd_wait( esp, 1000 );
+    esp->ptxbuf->size = ( uint8_t * )p_txbuffer - esp->ptxbuf->data;
+    
+    esp_cmd_wait( esp->ptxbuf, esp->prxbuf, 1000 );
 
-    if( strstr( ( char * )esp->rxbuffer, "CONNECT" )
-            || strstr( ( char * )esp->rxbuffer, "ALREADY CONNECTED" ) )
+    if( strstr( ( char * )esp->prxbuf->data, "CONNECT" )
+            || strstr( ( char * )esp->prxbuf->data, "ALREADY CONNECTED" ) )
     {
         link->linked = 1;
-        return 1;
+        return 0;
     }
 
     else
     {
-        esp8266_debug( "Log:ESP8266 link connect fail\r\n" );
-        return 0;
+        esp_debug( "ESP8266 : error : link connect fail\r\n" );
+        return 3;
     }
 }
 
-uint8_t esp8266_link_close ( esp8266 * esp, esp8266_link * link )
+uint8_t esp_link_close ( esp * myesp, esp_link * mylink )
 {
     uint8_t ret;
-    char * p_txbuffer = ( char * )esp->txbuffer;
+    char * p_txbuffer = ( char * )myesp->ptxbuf->data;
 
-    if( link->linked )
+    if( mylink->linked )
     {
-        esp8266_ll_delayms( 500 );
-        if( transparent )
+        esp_cmd_wait( NULL, NULL, 500 );
+        
+        if( _transparent_state )
         {
-            esp->tx_len = sprintf( ( char * )esp->txbuffer, "+++" );
-            esp8266_cmd_wait( esp, 0 );
-            esp8266_ll_delayms( 1100 );
+            myesp->ptxbuf->size = sprintf( ( char * )myesp->ptxbuf->data, "+++" );
+            esp_cmd_wait( myesp->ptxbuf, NULL, 0 );
+            
+            esp_cmd_wait( NULL, NULL, 1100 );
         }
 
         p_txbuffer += sprintf( ( char * )p_txbuffer, "AT+CIPCLOSE" );
 
-        if( esp->cipmux )
-            p_txbuffer += sprintf( ( char * )p_txbuffer, "=%d", link->id );
+        if( myesp->cipmux )
+            p_txbuffer += sprintf( ( char * )p_txbuffer, "=%d", mylink->id );
 
         p_txbuffer += sprintf( ( char * )p_txbuffer, "\r\n" );
 
-        esp->tx_len = ( uint8_t * )( p_txbuffer ) - esp->txbuffer;
+        myesp->ptxbuf->size = ( uint8_t * )( p_txbuffer ) - myesp->ptxbuf->data;
 
-        ret = esp8266_cmd_wait( esp, 500 );
+        ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 500 );
         
-        if( ret == 1 || strstr( ( char * )esp->rxbuffer, "CLOSED" ) )
+        if( ret == 1 || strstr( ( char * )myesp->prxbuf->data, "CLOSED" ) )
         {
-            return 1;
+            return 0;
         }
 
         else
         {
-            esp8266_debug( "Log:ESP8266 link close failed\r\n" );
-            return 0;
+            esp_debug( "ESP8266 : error : close failed\n" );
+            return 1;
         }
     }
 
-    return 1;
+    return 0;
 }
 
-uint8_t esp8266_link_send ( esp8266 * esp, esp8266_link * link )
+uint8_t esp_link_send ( esp * myesp, esp_link * mylink )
 {
     uint8_t i;
-    char * p_txbuffer = ( char * )esp->txbuffer;
+    uint8_t ret;
+    char * p_txbuffer = ( char * )myesp->ptxbuf->data;
 
-    if( link == NULL )
-        return 0;
+    if( mylink == NULL )
+        return 1;
 
-    if( link->tx_len == 0 )
-        return 0;
+    if( mylink->ptxbuf->size == 0 )
+        return 2;
 
-    if( link->linked == 0 )
+    if( mylink->linked == 0 )
     {
-        esp8266_debug( "Log:ESP8266 link send fail for no connection \r\n" );
-        return 0;
+        esp_debug( "ESP8266 : error : link send fail for no connection\n" );
+        return 3;
     }
 
-    if( esp->cipmode == 0 )
+    if( myesp->cipmode == 0 )
     {
         p_txbuffer += sprintf( p_txbuffer, "AT+CIPSEND=" );
 
-        if( esp->cipmux )
-            p_txbuffer += sprintf( p_txbuffer, "%d,", link->id );
+        if( myesp->cipmux )
+            p_txbuffer += sprintf( p_txbuffer, "%d,", mylink->id );
 
-        p_txbuffer += sprintf( p_txbuffer, "%d\r\n", link->tx_len );
+        p_txbuffer += sprintf( p_txbuffer, "%d\r\n", mylink->ptxbuf->size );
 
-        esp->tx_len = ( uint8_t * )( p_txbuffer ) - esp->txbuffer;
+        myesp->ptxbuf->size = ( uint8_t * )( p_txbuffer ) - myesp->ptxbuf->data;
 
-        if( esp8266_cmd_wait( esp, 500 ) == 1 )
+        if( esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 500 ) == 1 )
         {
-            esp8266_ll_send( link->txbuffer, link->tx_len );
-            link->tx_len = 0;
+            
+            esp_send_buffer( mylink->ptxbuf );
             
             for( i = 0; i < 4; i++ )
             {
-                if( esp8266_cmd_wait( esp, 500 ) == 1 )
-                  break;
+                if( esp_cmd_wait( NULL, myesp->prxbuf, 500 ) == 1 )
+                    return 0;
             }
+            return 4;
         }
-
         else
         {
-            esp8266_debug( "Log:ESP8266 link send start fail\r\n" );
+            esp_debug( "ESP8266 : error : link send start fail\n" );
+            return 5;
         }
 
-        return 0;
+        
     }
-
     else
     {
-        if( !transparent )
+        if( !_transparent_state )
         {
-            p_txbuffer += sprintf( p_txbuffer, "AT+CIPSEND\r\n" );
-            esp->tx_len = ( uint8_t * )p_txbuffer - esp->txbuffer;
 
-            if( esp8266_cmd_wait( esp, 500 ) == 1 )
+            myesp->ptxbuf->size = sprintf( (char *)myesp->ptxbuf->data, "AT+CIPSEND\r\n" );
+            ret = esp_cmd_wait( myesp->ptxbuf, myesp->prxbuf, 500 );
+            if( ret && strstr((char*)myesp->prxbuf->data , ">") != NULL )
             {
-                transparent = 1;
-                esp8266_ll_send( link->txbuffer, link->tx_len );
-                return 1;
+                _transparent_state = 1;
+                esp_send_buffer( mylink->ptxbuf );
+                return 0;
             }
-
-            esp8266_debug( "Log:ESP8266 link send fail\r\n" );
-            return 0;
+            else
+            {
+                esp_debug( "ESP8266 : error : link send fail\n" );
+                return 6; 
+            }            
         }
 
         else
         {
-            esp8266_ll_send( link->txbuffer, link->tx_len );
-            return 1;
+            esp_send_buffer( mylink->ptxbuf );
+            return 0;
         }
     }
 }
 
-uint8_t esp8266_link_recv ( esp8266 * esp, esp8266_link * link )
+uint8_t esp_link_recv ( esp * myesp, esp_link * mylink )
 {
-    static uint8_t state;
-    if( esp == NULL || link == NULL )
-        return 0;
 
-    if( link->linked == 0 )
+    if( myesp == NULL || mylink == NULL )
     {
-        esp8266_debug( "Log:ESP8266 link recv fail for no connection \r\n" );
-        return 0;
+        return 1;
+    }
+
+    if( mylink->linked == 0 )
+    {
+        esp_debug( "ESP8266 : error : link recv fail for no connection\n" );
+        return 2;
     }
     
-    switch( state )
-    {
-        case 0:
-            
-            rx_len_now = 0;
-            esp8266_ll_recv( link->rxbuffer + link->rx_len, ESP8266_BUFLEN4 - link->rx_len );
-            state = 1;
-            break;
-        case 1:
-            
-            if( rx_len_now )
-            {
-//                if( esp->cipmode == 0 )
-//                {
-//                    if( esp->cipmux )
-//                }
-//                else
-//                {
-//                    
-//                }
-                link->rx_len += rx_len_now;
-                state = 0;
-            }
-            break;
-        
-        default:
-            state = 0;
-        break;
-    }
-    return 1;
+    esp_recv_buffer( mylink->prxbuf );
+
+    return 0;
 }
 
 

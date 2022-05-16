@@ -14,29 +14,56 @@ TIPS:
         +IPD<[,id]>,[length]:[payload]
 EXAMPLE CODE:
 
-    esp8266 myesp;
-    esp8266_link mylink;
+    uint8_t pdata1[128];
+    uint8_t pdata2[128];
+    uint8_t pdata3[128];
+    uint8_t pdata4[128];
 
-    void setup( void )
+    esp myesp =
     {
-        esp8266_init( &myesp );
-        esp8266_setup( &myesp, 1, 0, "yourssid", "yourpswd", NULL, NULL, 1 ,1 ,0 ); 
-        esp8266_link_setup( &myesp, &mylink, 0, 1, "192.168.x.x", xxxx, xxxx, xx );
-        esp8266_link_connect( &myesp, &mylink );
-        
-    }
+        .mode = 1,
+        .ssid = "117-middle",
+        .pswd = "zxcv1234",
+        .auto_connect = 1,
+        .cipmode = 1,
+        .cipmux = 0
+    };
 
-    void loop( void )
+    esp_link mylink = 
     {
-        esp8266_link_recv( &myesp, &mylink );
-        if( mylink.rx_len )
+        .id = 0,
+        .netpro = 1,
+        .ip = "192.168.31.17",
+        .port = 8080,
+        .localport = 8089,
+        .keepalive = 60
+    };
+    
+    esp_setup( &myesp , esp_buffer_static(pdata1,128), esp_buffer_static(pdata2,128));
+    esp_link_setup( &myesp, &mylink, esp_buffer_static(pdata3,128), esp_buffer_static(pdata4,128) );
+    esp_link_connect( &myesp, &mylink );
+    
+    void ESP_LoopTask( void )
+    {
+        static uint32_t state;
+        switch(state)
         {
-            mylink.tx_len = sprintf( (char *)mylink.txbuffer, "recv:%d\r\n\t%s\r\n", mylink.rx_len, mylink.rxbuffer );
-            esp8266_link_send( &myesp, &mylink );
-            mylink.rx_len = 0;
+            case 0:
+                esp_link_recv( &myesp, &mylink );
+                state = 1;
+                break;
+            case 1:
+                if( mylink.prxbuf->size )
+                {
+                    mylink.ptxbuf->size = sprintf( (char *)mylink.ptxbuf->data, "recv:%d\r\n\t%s\r\n", mylink.prxbuf->size, mylink.prxbuf->data );
+                    esp_link_send( &myesp, &mylink );
+                    state = 0;
+                }
+                break;
+            default : state = 0;break;
         }
     }
-
+    
 
 *******************************************************************************/
 #ifndef __ESP8266_H
@@ -48,35 +75,39 @@ EXAMPLE CODE:
 #include "usart.h"
 #include "stm32f1xx_hal_uart.h"
 
-//#include "base.h"
+#include "base.h"
+#include "stdio.h"
 
-// #define     ESP8266_USE_HWRESET	    1
+#define     ESP_LL_HUART            huartx
+#define     ESP_USE_HWRESET         0
 
-#define     ESP8266_BUFLEN1             128 // for AT cmd send
-#define     ESP8266_BUFLEN2             256 // for AT cmd receive
-#define     ESP8266_BUFLEN3             512 // for link data send
-#define     ESP8266_BUFLEN4             512 // for link data receive
+//#define     esp_debug(expr)         myprintf(expr)
+#define     esp_debug(expr)         ((void)0U)
 
-#define     ESP8266_LL_HUART            huartx
+typedef struct _esp_buffer
+{
+    uint8_t type;       // 0:not ready  1:static(stack or global mem)  2:dynamic(heap)
+    uint8_t * data;     // data pointer
+    uint16_t cap;       // total capocity
+    volatile uint16_t size;      // actual length
+}esp_buffer;
 
-//#define     esp8266_debug(expr)         myprintf(expr)
-#define     esp8266_debug(expr)         ((void)0U)
-
+esp_buffer *    esp_buffer_static   ( uint8_t * mem, uint16_t capicity );
+esp_buffer *    esp_buffer_dynamic  ( uint16_t capicity );
+void            esp_buffer_free     ( esp_buffer * buffer );
 
 typedef struct
 {
     uint8_t     id;         // 0,1,2,3,4
     uint8_t     netpro;     // 1:TCP 2:UDP 3:SSL
-    uint8_t     ip[13];
-    uint8_t     linked;
+    uint8_t     ip[128];
     uint16_t    port;
     uint16_t    localport;
     uint16_t    keepalive;
-    uint8_t     txbuffer[ESP8266_BUFLEN3];
-    uint16_t    tx_len;
-    uint8_t     rxbuffer[ESP8266_BUFLEN4];
-    volatile uint16_t rx_len;
-} esp8266_link;
+    esp_buffer * ptxbuf;
+    esp_buffer * prxbuf;
+    uint8_t     linked;
+} esp_link;
 
 typedef struct
 {
@@ -90,25 +121,34 @@ typedef struct
     uint8_t     cipmode;
     uint8_t     cipmux;
     uint8_t     connected;
-    uint8_t     txbuffer[ESP8266_BUFLEN1];
-    uint16_t    tx_len;
-    uint8_t     rxbuffer[ESP8266_BUFLEN2];
-    uint16_t    rx_len;
-    esp8266_link  *  link0;
-    esp8266_link  *  link1;
-    esp8266_link  *  link2;
-    esp8266_link  *  link3;
-    esp8266_link  *  link4;
-} esp8266;
+    esp_buffer * ptxbuf;
+    esp_buffer * prxbuf;
+    esp_link  *  link0;
+    esp_link  *  link1;
+    esp_link  *  link2;
+    esp_link  *  link3;
+    esp_link  *  link4;
+} esp;
 
 
-#define     esp8266_ll_delayms(ms)      HAL_Delay( ms )
+void  esp_ll_recv_callback ( UART_HandleTypeDef * huart, uint16_t Size );
 
-void        esp8266_ll_send             ( uint8_t * txbuffer, uint16_t tx_len );
-void        esp8266_ll_recv             ( uint8_t * rxbuffer, uint16_t rx_len );
+static inline void esp_ll_send ( uint8_t * pdat, uint16_t len )
+{
+    HAL_UART_Transmit_DMA( &ESP_LL_HUART, pdat, len );
+}
 
-void        esp8266_ll_recv_callback    ( UART_HandleTypeDef * huart,
-        uint16_t Size );
+static inline void esp_ll_recv ( uint8_t * pdat, uint16_t len )
+{
+    //HAL_UART_AbortReceive( &ESP_LL_HUART );
+    HAL_UARTEx_ReceiveToIdle_DMA( &ESP_LL_HUART, pdat, len );
+}
+
+static inline void esp_ll_init ( void )
+{
+    // register callback function for HAL_UARTEx_ReceiveToIdle_DMA
+    HAL_UART_RegisterRxEventCallback( &ESP_LL_HUART, esp_ll_recv_callback );
+}
 
 /* return   1: OK
             2: ERROR
@@ -116,35 +156,31 @@ void        esp8266_ll_recv_callback    ( UART_HandleTypeDef * huart,
             4: recvived something but not 1,2,3
             5: timeout
 */
-uint8_t     esp8266_cmd_wait            ( esp8266 * esp, uint32_t timeout );
+uint8_t     esp_cmd_wait            ( esp_buffer * txbuf, esp_buffer * rxbuf, uint32_t timeout );
 
 
-uint8_t     esp8266_reset               ( esp8266 * esp );
-uint8_t     esp8266_at                  ( esp8266 * esp );
-uint8_t     esp8266_setmode             ( esp8266 * esp );
-uint8_t     esp8266_join_ap             ( esp8266 * esp );
-uint8_t     esp8266_set_ap              ( esp8266 * esp );
-uint8_t     esp8266_autocon             ( esp8266 * esp );
-uint8_t     esp8266_cipmode             ( esp8266 * esp );
-uint8_t     esp8266_cipmux              ( esp8266 * esp );
-uint8_t     esp8266_transparent         ( esp8266 * esp );
-void        esp8266_transparent_end     ( esp8266 * esp );
-uint8_t     esp8266_mulitransparent     ( esp8266 * esp );
+uint8_t     esp_reset               ( esp * myesp );
+uint8_t     esp_at                  ( esp * myesp );
+uint8_t     esp_at_echo             ( esp * myesp, uint8_t echo );
+uint8_t     esp_setmode             ( esp * myesp, uint8_t mode);
+uint8_t     esp_join_ap             ( esp * myesp, uint8_t * ssid, uint8_t * pswd );
+uint8_t     esp_set_ap              ( esp * myesp, uint8_t * ssid, uint8_t * pswd, uint8_t mode );
 
-uint8_t     esp8266_init                ( esp8266 * esp );
+uint8_t     esp_autocon             ( esp * myesp, uint8_t autocon );
+uint8_t     esp_cipmode             ( esp * myesp, uint8_t cipmode );
+uint8_t     esp_cipmux              ( esp * myesp, uint8_t cipmux );
 
-uint8_t     esp8266_setup               ( esp8266 * esp, uint8_t mode,
-        uint8_t mode_ap, const char * ssid, const char * pswd, \
-        const char * ssid_ap, const char * pswd_ap, \
-        uint8_t auto_connect, uint8_t cipmode, uint8_t cipmux );
+uint8_t     esp_transparent         ( esp * myesp );
+void        esp_transparent_end     ( esp * myesp );
+uint8_t     esp_mulitransparent     ( esp * myesp );
 
-uint8_t     esp8266_link_setup          ( esp8266 * esp, esp8266_link * link,
-        uint8_t id, uint8_t netpro, const char * ip, uint16_t port, \
-        uint16_t localport, uint16_t keepalive );
-uint8_t     esp8266_link_connect        ( esp8266 * esp, esp8266_link * link );
-uint8_t     esp8266_link_close          ( esp8266 * esp, esp8266_link * link );
-uint8_t     esp8266_link_send           ( esp8266 * esp, esp8266_link * link );
-uint8_t     esp8266_link_recv           ( esp8266 * esp, esp8266_link * link );
+uint8_t     esp_setup               ( esp * myesp, esp_buffer * txbuf,esp_buffer * rxbuf );
+uint8_t     esp_link_setup          ( esp * myesp, esp_link * mylink, esp_buffer * txbuf, esp_buffer * rxbuf );
+
+uint8_t     esp_link_connect        ( esp * myesp, esp_link * mylink );
+uint8_t     esp_link_close          ( esp * myesp, esp_link * mylink );
+uint8_t     esp_link_send           ( esp * myesp, esp_link * mylink );
+uint8_t     esp_link_recv           ( esp * myesp, esp_link * mylink );
 
 
 
